@@ -35,7 +35,7 @@ impl Screen for Start {
 
     }
 
-    fn update(&mut self, _ctx: &egui::Context, _event: &egui::RawInput) {
-
+    fn update(&mut self, _ctx: &egui::Context, _event: &eframe::Frame) {
+        
     }
 }

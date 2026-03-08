@@ -29,7 +29,7 @@ impl Screen for Settings {
 
     }
 
-    fn update(&mut self, _ctx: &egui::Context, _event: &egui::RawInput) {
+    fn update(&mut self, _ctx: &egui::Context, _event: &eframe::Frame) {
 
     }
 }

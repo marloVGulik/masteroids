@@ -22,7 +22,7 @@ impl Game {
 }
 
 impl Screen for Game {
-    fn ui(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui, _order: egui::Order) -> Option<ScreenCommand> {
+    fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, _order: egui::Order) -> Option<ScreenCommand> {
         let mut cmd = None;
 
         ui.vertical_centered(|ui| {
@@ -31,10 +31,36 @@ impl Screen for Game {
                 cmd = Some(ScreenCommand::Start);
             }
 
-            let painter = ui.painter();
-            let pos = egui::pos2(100.0, 100.0);
-            painter.circle_filled(pos, 5.0, egui::Color32::RED); // Draw an asteroid
+            // let painter = ui.painter();
+            // let pos = egui::pos2(100.0, 100.0);
+            // painter.circle_filled(pos, 5.0, egui::Color32::RED); // Draw an asteroid
+
+            let available_rect = ui.available_rect_before_wrap();
+            let width = available_rect.width();
+            let height = available_rect.height();
+            let size = width.min(height);
+            let play_area = egui::Rect::from_center_size(
+                available_rect.center(), 
+                egui::vec2(size, size)
+            );
+            ui.painter().rect_stroke( // View box
+                play_area, 
+                0.0, 
+                (2.0, egui::Color32::WHITE), 
+                egui::StrokeKind::Inside
+            );
+            let mut game_ui = ui.new_child(egui::UiBuilder::new().max_rect(play_area));
+            
+            for asteroid in self.asteroids.iter() {
+                asteroid.draw(&mut game_ui, size);
+            }
+            for bullet in self.bullets.iter() {
+                bullet.draw(&mut game_ui, size);
+            }
+            self.ship.draw(&mut game_ui, size);
         });
+
+        ctx.request_repaint();
 
         cmd
     }
@@ -44,10 +70,6 @@ impl Screen for Game {
     } 
 
     fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) {
-        // Player movement logic
-        const ZERO: f32 = 0.0;
-        const MAX_SPEED: f32 = 5.0;
-
         ctx.input(|i| {
             // Movement
             if i.key_down(egui::Key::W) {
@@ -67,23 +89,37 @@ impl Screen for Game {
                 }
             }
 
+            // Update ship
             self.ship.update(i.stable_dt);
 
+            // Update bullets
             for bullet in &mut self.bullets {
                 bullet.update(i.stable_dt);
             }
+
+            // New asteroids and update asteroids
+            let mut new_asteroids: Vec<Asteroid> = vec!();
             for asteroid in &mut self.asteroids {
                 asteroid.update(i.stable_dt);
 
-                for bullet in self.bullets.iter() {
+                // Only retain bullets that have not hit
+                self.bullets.retain(|bullet| {
+
+                    // Check collision
                     if asteroid.check_collision(bullet.get_position()) {
+
+                        // Add new asteroid
+                        new_asteroids.push(Asteroid::hit_and_copy(asteroid));
+
                         // Remove bullet
-                        
+                        return false; 
                     }
-                }
+                    return true;
+                });
             }
+
+            // Adding asteroids to self
+            self.asteroids.append(&mut new_asteroids);
         });
-
-
     }
 }

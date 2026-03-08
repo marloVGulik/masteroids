@@ -1,4 +1,4 @@
-const MIN_SIZE: f32 = 10.0;
+const MIN_SIZE: f32 = 5.0;
 
 pub struct Asteroid {
     position: egui::Pos2,
@@ -25,6 +25,17 @@ impl Asteroid {
             direction: old_asteroid.direction + 180.0, // Change direction for the new asteroid
             size: old_asteroid.size,
         }
+    }
+
+    pub fn draw(&self, ui: &mut egui::Ui, size: f32) {
+        let size_mp: f32 = size / 100.0;
+        let draw_position = egui::pos2(self.position.x * size_mp, self.position.y * size_mp);
+
+        ui.painter().circle_filled(
+            draw_position, 
+            f32::from(self.size) * MIN_SIZE * size_mp, 
+            egui::Color32::GRAY
+        );
     }
 
     pub fn update(&mut self, dt: f32) {

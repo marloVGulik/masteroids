@@ -17,9 +17,16 @@ impl Bullet {
         self.position
     }
 
+    pub fn draw(&self, ui: &mut egui::Ui, size: f32) {
+        let size_mp: f32 = size / 100.0;
+        let draw_position = egui::pos2(self.position.x * size_mp, self.position.y * size_mp);
+
+        ui.painter().circle_filled(draw_position, 3.0 * size_mp, egui::Color32::RED);
+    }
+
     pub fn update(&mut self, dt: f32) {
-        let radians = self.direction.to_radians();
-        self.position.x += SPEED * radians.cos() * dt;
-        self.position.y += SPEED * radians.sin() * dt;
+        // let radians = self.direction.to_radians();
+        self.position.x += SPEED * self.direction.cos() * dt;
+        self.position.y += SPEED * self.direction.sin() * dt;
     }
 }
