@@ -26,7 +26,10 @@ impl App {
 }
 
 impl EframeApp for App {    
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // Update physics and handle input
+        self.current_screen.update(&ctx, &frame);
+
         let mut next_screen: Option<screen::ScreenCommand> = None;
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading(&self.label);
@@ -40,15 +43,18 @@ impl EframeApp for App {
                 screen::ScreenCommand::Start => {
                     self.current_screen = Box::new(screens::start::Start::new());
                 }
+                screen::ScreenCommand::Play => {
+                    self.current_screen = Box::new(screens::player::Game::new());
+                }
                 screen::ScreenCommand::Settings => {
                     self.current_screen = Box::new(screens::settings::Settings::new());
                 }
                 screen::ScreenCommand::ExitProgram => {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
-                _ => {
-                    // NOT IMPLEMENTED
-                }
+                // _ => {
+                //     // NOT IMPLEMENTED
+                // }
             }
         }
     }
