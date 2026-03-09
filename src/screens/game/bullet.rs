@@ -21,7 +21,7 @@ impl Bullet {
         let size_mp: f32 = size / 100.0;
         let draw_position = egui::pos2(self.position.x * size_mp, self.position.y * size_mp);
 
-        ui.painter().circle_filled(draw_position, 3.0 * size_mp, egui::Color32::RED);
+        ui.painter().circle_filled(draw_position, 0.5 * size_mp, egui::Color32::RED);
     }
 
     pub fn update(&mut self, dt: f32) {

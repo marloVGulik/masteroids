@@ -1,8 +1,8 @@
 use crate::screens::game::bullet::Bullet;
 
-const MAX_SPEED: f32 = 5.0;
-const ACCELERATION: f32 = 1.0; // Acceleration factor
-const FRICTION: f32 = 0.1; // Friction factor
+// const MAX_SPEED: f32 = 50.0;
+const ACCELERATION: f32 = 50.0; // Acceleration factor
+const FRICTION: f32 = 0.5; // Friction factor
 
 const MAX_ROTATION_SPEED: f32 = 5.0;
 const ROTATION_ACCELERATION: f32 = 5.0; // Rotation acceleration factor
@@ -11,7 +11,7 @@ const ROTATION_ACCELERATION: f32 = 5.0; // Rotation acceleration factor
 const SHOT_COOLDOWN: f64 = 0.5; // seconds
 
 pub struct Ship {
-    speed: f32,
+    velocity: egui::Vec2,
     rotation_speed: f32,
 
     rotation: f32,
@@ -23,7 +23,7 @@ pub struct Ship {
 impl Ship {
     pub fn new() -> Self {
         Self {
-            speed: 0.0,
+            velocity: egui::Vec2::ZERO,
             rotation_speed: 0.0,
             rotation: 0.0,
             position: egui::Pos2 { x: 50.0, y: 50.0 },
@@ -38,7 +38,9 @@ impl Ship {
         self.rotation_speed = (self.rotation_speed + ROTATION_ACCELERATION * dt).min(MAX_ROTATION_SPEED);
     }
     pub fn foward(&mut self, dt: f32) {
-        self.speed = (self.speed + ACCELERATION * dt).min(MAX_SPEED);
+        // self.speed = (self.speed + ACCELERATION * dt).min(MAX_SPEED);
+        self.velocity.x += ACCELERATION * self.rotation.cos() * dt;
+        self.velocity.y += ACCELERATION * self.rotation.sin() * dt;
     }
     pub fn shoot(&mut self, current_time: f64) -> Option<Bullet> {
         if current_time - self.last_shot_time >= SHOT_COOLDOWN {
@@ -56,7 +58,7 @@ impl Ship {
 
         // ui.painter().circle_filled(draw_position, 4.0 * size_mp, egui::Color32::BLUE);
         // Ship dimensions (scaled)
-        let ship_radius = 5.0 * size_mp;
+        let ship_radius = 3.0 * size_mp;
         let angle = self.rotation; // Assuming this is in radians
 
         // Define the 3 points of the triangle relative to (0,0)
@@ -88,14 +90,17 @@ impl Ship {
     pub fn update(&mut self, dt:f32) {
         // Update position based on speed and rotation
         // let radians = self.rotation.to_radians();
-        self.position.x += self.speed * self.rotation.cos() * dt;
-        self.position.y += self.speed * self.rotation.sin() * dt;
+        // self.position.x += self.speed * self.rotation.cos() * dt;
+        // self.position.y += self.speed * self.rotation.sin() * dt;
+
+        self.position.x += self.velocity.x * dt;
+        self.position.y += self.velocity.y * dt;
 
         // Apply rotation
         self.rotation += self.rotation_speed * dt;
 
         // Slow down over time (friction)
-        self.speed *= 1.0 - (FRICTION * dt); // Friction factor
+        self.velocity *= 1.0 - (FRICTION * dt); // Friction factor
         self.rotation_speed *= 1.0 - (FRICTION * dt); // Friction factor
     }
 }
