@@ -56,6 +56,8 @@ impl EframeApp for App {
                 //     // NOT IMPLEMENTED
                 // }
             }
+
+            self.current_screen.on_activate(ctx);
         }
     }
 

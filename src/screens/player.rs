@@ -66,7 +66,9 @@ impl Screen for Game {
     }
 
     fn on_activate(&mut self, _ctx: &egui::Context) {
-
+        self.asteroids.push(
+            Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 135.0, 5)
+        );
     } 
 
     fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) {
@@ -96,6 +98,7 @@ impl Screen for Game {
             for bullet in &mut self.bullets {
                 bullet.update(i.stable_dt);
             }
+            self.bullets.retain(|bullet| bullet.is_alive(i.time)); // Remove bullets that have expired
 
             // New asteroids and update asteroids
             let mut new_asteroids: Vec<Asteroid> = vec!();
@@ -114,7 +117,8 @@ impl Screen for Game {
                         // Remove bullet
                         return false; 
                     }
-                    return true;
+
+                    return true; // Retain bullet
                 });
             }
 

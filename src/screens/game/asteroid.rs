@@ -42,6 +42,9 @@ impl Asteroid {
         let radians = self.direction.to_radians();
         self.position.x += self.speed * radians.cos() * dt;
         self.position.y += self.speed * radians.sin() * dt;
+
+        self.position.x = self.position.x.rem_euclid(100.0);
+        self.position.y = self.position.y.rem_euclid(100.0);
     }
 
     pub fn check_collision(&self, point: egui::Pos2) -> bool {

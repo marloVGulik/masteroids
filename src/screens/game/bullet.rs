@@ -1,16 +1,23 @@
-const SPEED: f32 = 10.0;
+const SPEED: f32 = 75.0;
+const LIFETIME: f64 = 2.0; // seconds
 
 pub struct Bullet {
     position: egui::Pos2,
     direction: f32,
+    lifetime: f64,
 }
 
 impl Bullet {
-    pub fn new(position: egui::Pos2, direction: f32) -> Self {
+    pub fn new(position: egui::Pos2, direction: f32, current_time: f64) -> Self {
         Self {
             position,
             direction,
+            lifetime: current_time + LIFETIME,
         }
+    }
+
+    pub fn is_alive(&self, current_time: f64) -> bool {
+        current_time < self.lifetime
     }
 
     pub fn get_position(&self) -> egui::Pos2 {
@@ -28,5 +35,8 @@ impl Bullet {
         // let radians = self.direction.to_radians();
         self.position.x += SPEED * self.direction.cos() * dt;
         self.position.y += SPEED * self.direction.sin() * dt;
+
+        self.position.x = self.position.x.rem_euclid(100.0);
+        self.position.y = self.position.y.rem_euclid(100.0);
     }
 }
