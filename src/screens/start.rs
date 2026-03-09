@@ -27,10 +27,10 @@ impl Screen for Start {
                 cmd = Some(ScreenCommand::ExitProgram);
             }
             ui.label("controls");
-            ui.label("forwards   | w");
-            ui.label("turn left  | a");
-            ui.label("turn right | d");
-            ui.label("shoot      | space");
+            ui.label("forwards: w");
+            ui.label("turn left: a");
+            ui.label("turn right: d");
+            ui.label("shoot: space");
         });
 
         cmd
