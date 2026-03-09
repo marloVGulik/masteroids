@@ -81,7 +81,7 @@ impl Ship {
                 egui::pos2(draw_position.x + rx, draw_position.y + ry)
             })
             .collect();
-
+        
         // Draw the triangle
         ui.painter().add(egui::Shape::Path(egui::epaint::PathShape {
             points: rotated_points,

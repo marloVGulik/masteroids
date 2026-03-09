@@ -26,6 +26,11 @@ impl Screen for Start {
             if ui.button("Exit :(").clicked() {
                 cmd = Some(ScreenCommand::ExitProgram);
             }
+            ui.label("controls");
+            ui.label("forwards: w");
+            ui.label("turn left: a");
+            ui.label("turn right: d");
+            ui.label("shoot: space");
         });
 
         cmd
