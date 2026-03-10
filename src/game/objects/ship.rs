@@ -1,4 +1,4 @@
-use crate::screens::game::bullet::Bullet;
+use crate::game::objects::bullet::Bullet;
 
 // const MAX_SPEED: f32 = 50.0;
 const ACCELERATION: f32 = 50.0; // Acceleration factor
@@ -39,7 +39,7 @@ impl Ship {
     pub fn turn_right(&mut self, dt: f32) {
         self.rotation_speed = (self.rotation_speed + ROTATION_ACCELERATION * dt).min(MAX_ROTATION_SPEED);
     }
-    pub fn foward(&mut self, dt: f32) {
+    pub fn forward(&mut self, dt: f32) {
         // self.speed = (self.speed + ACCELERATION * dt).min(MAX_SPEED);
         self.velocity.x += ACCELERATION * self.rotation.cos() * dt;
         self.velocity.y += ACCELERATION * self.rotation.sin() * dt;
@@ -56,10 +56,12 @@ impl Ship {
         None
     }
 
-    pub fn draw(&mut self, ui: &mut egui::Ui, size: f32) {
+    pub fn draw(&mut self, ui: &mut egui::Ui, size: f32, play_area: egui::Rect) {
         let size_mp: f32 = size / 100.0;
-        let draw_position = egui::pos2(self.position.x * size_mp, self.position.y * size_mp);
-
+        let draw_position = egui::pos2(
+            play_area.min.x + self.position.x * size_mp, 
+            play_area.min.y + self.position.y * size_mp
+        );
         // ui.painter().circle_filled(draw_position, 4.0 * size_mp, egui::Color32::BLUE);
         // Ship dimensions (scaled)
         let ship_radius = 3.0 * size_mp;

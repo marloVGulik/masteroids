@@ -44,7 +44,7 @@ impl EframeApp for App {
                     self.current_screen = Box::new(screens::start::Start::new());
                 }
                 screen::ScreenCommand::Play => {
-                    self.current_screen = Box::new(screens::player::Game::new());
+                    self.current_screen = Box::new(screens::player::Player::new());
                 }
                 screen::ScreenCommand::Settings => {
                     self.current_screen = Box::new(screens::settings::Settings::new());

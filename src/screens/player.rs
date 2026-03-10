@@ -1,27 +1,21 @@
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
 
-use crate::screens::game::asteroid::Asteroid;
-use crate::screens::game::ship::Ship;
-use crate::screens::game::bullet::Bullet;
+use crate::game::game::{Game, GameInput};
 
-pub struct Game {
-    ship: Ship,
-    asteroids: Vec<Asteroid>,
-    bullets: Vec<Bullet>,
+pub struct Player {
+    game: Game,
 }
 
-impl Game {
+impl Player {
     pub fn new() -> Self {
         Self {
-            asteroids: vec!(),
-            ship: Ship::new(),
-            bullets: vec!(),
+            game: Game::new(),
         }
     }
 }
 
-impl Screen for Game {
+impl Screen for Player {
     fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, _order: egui::Order) -> Option<ScreenCommand> {
         let mut cmd = None;
 
@@ -51,13 +45,14 @@ impl Screen for Game {
             );
             let mut game_ui = ui.new_child(egui::UiBuilder::new().max_rect(play_area));
             
-            for asteroid in self.asteroids.iter() {
-                asteroid.draw(&mut game_ui, size);
-            }
-            for bullet in self.bullets.iter() {
-                bullet.draw(&mut game_ui, size);
-            }
-            self.ship.draw(&mut game_ui, size);
+            // for asteroid in self.asteroids.iter() {
+            //     asteroid.draw(&mut game_ui, size, play_area);
+            // }
+            // for bullet in self.bullets.iter() {
+            //     bullet.draw(&mut game_ui, size, play_area);
+            // }
+            // self.ship.draw(&mut game_ui, size, play_area);
+            self.game.draw(&mut game_ui, size, play_area);
         });
 
         ctx.request_repaint();
@@ -66,64 +61,62 @@ impl Screen for Game {
     }
 
     fn on_activate(&mut self, _ctx: &egui::Context) {
-        self.asteroids.push(
-            Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 135.0, 5)
-        );
+        self.game.activate();
     } 
 
     fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) {
         ctx.input(|i| {
             // Movement
             if i.key_down(egui::Key::W) {
-                self.ship.foward(i.stable_dt);
+                self.game.interact(GameInput::Forward { dt: i.stable_dt });
             }
             if i.key_down(egui::Key::A) {
-                self.ship.turn_left(i.stable_dt);
+                self.game.interact(GameInput::Left { dt: i.stable_dt });
             } 
             if i.key_down(egui::Key::D) {
-                self.ship.turn_right(i.stable_dt);
+                self.game.interact(GameInput::Right { dt: i.stable_dt });
             }
 
             // Shooting
             if i.key_down(egui::Key::Space) {
-                if let Some(bullet) = self.ship.shoot(i.time) {
-                    self.bullets.push(bullet);
-                }
+                self.game.interact(GameInput::Shoot { current_time: i.time });
             }
 
-            // Update ship
-            self.ship.update(i.stable_dt);
+            self.game.update(i.stable_dt, i.time);
 
-            // Update bullets
-            for bullet in &mut self.bullets {
-                bullet.update(i.stable_dt);
-            }
-            self.bullets.retain(|bullet| bullet.is_alive(i.time)); // Remove bullets that have expired
+            // // Update ship
+            // self.ship.update(i.stable_dt);
 
-            // New asteroids and update asteroids
-            let mut new_asteroids: Vec<Asteroid> = vec!();
-            for asteroid in &mut self.asteroids {
-                asteroid.update(i.stable_dt);
+            // // Update bullets
+            // for bullet in &mut self.bullets {
+            //     bullet.update(i.stable_dt);
+            // }
+            // self.bullets.retain(|bullet| bullet.is_alive(i.time)); // Remove bullets that have expired
 
-                // Only retain bullets that have not hit
-                self.bullets.retain(|bullet| {
+            // // New asteroids and update asteroids
+            // let mut new_asteroids: Vec<Asteroid> = vec!();
+            // for asteroid in &mut self.asteroids {
+            //     asteroid.update(i.stable_dt);
 
-                    // Check collision
-                    if asteroid.check_collision(bullet.get_position()) {
+            //     // Only retain bullets that have not hit
+            //     self.bullets.retain(|bullet| {
 
-                        // Add new asteroid
-                        new_asteroids.push(Asteroid::hit_and_copy(asteroid));
+            //         // Check collision
+            //         if asteroid.check_collision(bullet.get_position()) {
 
-                        // Remove bullet
-                        return false; 
-                    }
+            //             // Add new asteroid
+            //             new_asteroids.push(Asteroid::hit_and_copy(asteroid));
 
-                    return true; // Retain bullet
-                });
-            }
+            //             // Remove bullet
+            //             return false; 
+            //         }
 
-            // Adding asteroids to self
-            self.asteroids.append(&mut new_asteroids);
+            //         return true; // Retain bullet
+            //     });
+            // }
+
+            // // Adding asteroids to self
+            // self.asteroids.append(&mut new_asteroids);
         });
     }
 }

@@ -1,0 +1,138 @@
+use crate::game::objects::{asteroid::{Asteroid}, bullet::Bullet, ship::Ship};
+
+
+pub enum GameInput {
+    Left { dt: f32 },
+    Right { dt: f32 },
+    Forward { dt: f32 },
+    Shoot { current_time: f64 },
+}
+pub struct Game {
+    // Seeds for asteroid generation and destruction, to ensure deterministic behavior across clients
+    spawn_seed: u32,
+    destroy_seed: u32,
+
+    score: u32,
+    asteroids: Vec<Asteroid>,
+    ship: Ship,
+    bullets: Vec<Bullet>,
+}
+
+impl Game {
+    pub fn new() -> Self {
+        Self {
+            spawn_seed: 0,
+            destroy_seed: 0,
+            score: 0,
+            asteroids: vec!(),
+            ship: Ship::new(),
+            bullets: vec!(),
+        }
+    }
+
+    pub fn interact(&mut self, input: GameInput) {
+        match input {
+            GameInput::Left { dt } => self.ship.turn_left(dt),
+            GameInput::Right { dt } => self.ship.turn_right(dt),
+            GameInput::Forward { dt } => self.ship.forward(dt),
+            GameInput::Shoot { current_time } => {
+                if let Some(bullet) = self.ship.shoot(current_time) {
+                    self.bullets.push(bullet);
+                }
+            }
+        }
+    }
+    pub fn activate(&mut self) {
+        self.asteroids.push(
+            Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 135.0, 5),
+        );
+        self.asteroids.push(
+            Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 45.0, 5),
+        );
+    }
+
+    pub fn update(&mut self, dt: f32, current_time: f64) -> GameEvent {
+        let out_event = GameEvent::new();
+
+        // Update ship
+        self.ship.update(dt);
+
+        // Update bullets
+        for bullet in &mut self.bullets {
+            bullet.update(dt);
+        }
+        self.bullets.retain(|bullet| bullet.is_alive(current_time)); // Remove bullets that have expired
+
+        // New asteroids and update asteroids
+        let mut new_asteroids: Vec<Asteroid> = vec!();
+        for asteroid in &mut self.asteroids {
+            asteroid.update(dt);
+
+            // Only retain bullets that have not hit
+            self.bullets.retain(|bullet| {
+
+                // Check collision
+                if asteroid.check_bullet_collision(bullet.get_position()) {
+
+                    // Add new asteroid
+                    new_asteroids.push(Asteroid::hit_and_copy(asteroid));
+                    
+                    // Remove bullet
+                    return false; 
+                }
+
+                return true; // Retain bullet
+            });
+        }
+
+        // Adding asteroids to self
+        self.asteroids.append(&mut new_asteroids);
+
+        // Asteroid collisions
+        let len = self.asteroids.len();
+        if len < 2 { return out_event; } // Cannot collide 1 or 0 asteroids
+
+        for i in 0..len - 1 { // Loop to second-to-last
+            let (head, tail) = self.asteroids.split_at_mut(i + 1);
+            let asteroid_a = &mut head[i]; 
+
+            for asteroid_b in tail {
+                if asteroid_a.check_asteroid_collision(asteroid_b) {
+                    // Apply physics to both
+                    asteroid_a.move_from_asteroid(asteroid_b);
+                    asteroid_b.move_from_asteroid(asteroid_a);
+                }
+            }
+        }
+
+        out_event
+    }
+
+    pub fn draw(&mut self, ui: &mut egui::Ui, size: f32, play_area: egui::Rect) {
+        for asteroid in self.asteroids.iter() {
+            asteroid.draw(ui, size, play_area);
+        }
+        for bullet in self.bullets.iter() {
+            bullet.draw(ui, size, play_area);
+        }
+        self.ship.draw(ui, size, play_area);
+    }
+}
+
+pub struct GameEvent {
+    pub died: bool,
+    pub score: u32,
+    pub asteroid_destroyed: bool,
+    pub bullet_fired: bool,
+}
+
+impl GameEvent {
+    pub fn new() -> Self {
+        Self {
+            died: false,
+            score: 0,
+            asteroid_destroyed: false,
+            bullet_fired: false,
+        }
+    }
+}

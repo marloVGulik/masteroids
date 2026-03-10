@@ -24,9 +24,12 @@ impl Bullet {
         self.position
     }
 
-    pub fn draw(&self, ui: &mut egui::Ui, size: f32) {
+    pub fn draw(&self, ui: &mut egui::Ui, size: f32, play_area: egui::Rect) {
         let size_mp: f32 = size / 100.0;
-        let draw_position = egui::pos2(self.position.x * size_mp, self.position.y * size_mp);
+        let draw_position = egui::pos2(
+            play_area.min.x + self.position.x * size_mp, 
+            play_area.min.y + self.position.y * size_mp
+        );
 
         ui.painter().circle_filled(draw_position, 0.5 * size_mp, egui::Color32::RED);
     }
