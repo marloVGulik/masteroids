@@ -68,6 +68,10 @@ impl Game {
                     // Send asteroid destroyed event
                     handler(GameEvent::AsteroidDestroyed { size: asteroid.get_size() });
 
+                    if asteroid.get_size() <= 1 {
+                        println!("Collected a rock!");
+                        self.collected_rocks += 1;
+                    }
                     // Add new asteroid
                     new_asteroids.push(Asteroid::hit_and_copy(asteroid));
                     
@@ -113,6 +117,10 @@ impl Game {
             bullet.draw(ui, size, play_area);
         }
         self.ship.draw(ui, size, play_area);
+    }
+
+    pub fn get_collected_rocks(&self) -> u32 {
+        self.collected_rocks
     }
 }
 

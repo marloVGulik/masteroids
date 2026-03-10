@@ -46,6 +46,8 @@ impl Screen for Player {
             let mut game_ui = ui.new_child(egui::UiBuilder::new().max_rect(play_area));
             
             self.game.draw(&mut game_ui, size, play_area);
+
+            ui.label(format!("Collected rocks: {}", self.game.get_collected_rocks()));
         });
 
         ctx.request_repaint();
