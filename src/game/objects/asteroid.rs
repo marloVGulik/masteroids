@@ -5,11 +5,11 @@ const MIN_SIZE: f32 = 2.0;
 pub struct Asteroid {
     position: egui::Pos2,
     velocity: egui::Vec2,
-    size: i8,
+    size: u8,
 }
 
 impl Asteroid {
-    pub fn new(position: egui::Pos2, speed: f32, direction: f32, size: i8) -> Self {
+    pub fn new(position: egui::Pos2, speed: f32, direction: f32, size: u8) -> Self {
         Self {
             position,
             velocity: egui::Vec2::new(speed * direction.to_radians().cos(), speed * direction.to_radians().sin()),
@@ -47,7 +47,7 @@ impl Asteroid {
 
         ui.painter().circle_filled(
             draw_position, 
-            (f32::from(self.size) / 1.5) * MIN_SIZE * size_mp, 
+            self.get_physical_radius() * size_mp, 
             egui::Color32::GRAY
         );
     }
@@ -60,16 +60,16 @@ impl Asteroid {
     }
 
     pub fn check_bullet_collision(&self, point: egui::Pos2) -> bool {
-        physics::point_in_circle(point, self.position, MIN_SIZE * (self.size as f32 / 1.5))
+        physics::point_in_circle(point, self.position, self.get_physical_radius())
     }
     pub fn check_asteroid_collision(&self, other: &Asteroid) -> bool {
-        physics::circle_collision(self.position, MIN_SIZE * (self.size as f32 / 1.5), other.position, MIN_SIZE * (other.size as f32 / 1.5))
+        physics::circle_collision(self.position, self.get_physical_radius(), other.position, other.get_physical_radius())
     }
     
     pub fn move_from_asteroid(&mut self, other: &Asteroid) {
         let delta = self.position - other.position;
         let distance = delta.length();
-        let min_dist = (self.size as f32 * MIN_SIZE / 1.5 + other.size as f32 * MIN_SIZE / 1.5);
+        let min_dist = self.get_physical_radius() + other.get_physical_radius();
 
         // 1. Only act if they are actually overlapping
         if distance < min_dist && distance > 0.0 {
@@ -100,5 +100,15 @@ impl Asteroid {
             // Add a small "impulse" based on the other's size to make it feel impactful
             self.velocity += push_direction * (speed * mass_ratio * 0.2);
         }
+    }
+
+    pub fn get_size(&self) -> u8 {
+        self.size
+    }
+    pub fn get_physical_radius(&self) -> f32 {
+        MIN_SIZE * (self.size as f32 / 1.5)
+    }
+    pub fn get_position(&self) -> egui::Pos2 {
+        self.position
     }
 }

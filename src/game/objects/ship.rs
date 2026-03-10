@@ -1,5 +1,6 @@
-use crate::game::objects::bullet::Bullet;
+use crate::{core::physics, game::objects::{asteroid::Asteroid, bullet::Bullet}};
 
+const SHIP_RADIUS: f32 = 3.0;
 // const MAX_SPEED: f32 = 50.0;
 const ACCELERATION: f32 = 50.0; // Acceleration factor
 const FRICTION: f32 = 0.5; // Friction factor
@@ -64,7 +65,7 @@ impl Ship {
         );
         // ui.painter().circle_filled(draw_position, 4.0 * size_mp, egui::Color32::BLUE);
         // Ship dimensions (scaled)
-        let ship_radius = 3.0 * size_mp;
+        let ship_radius = SHIP_RADIUS * size_mp;
         let angle = self.rotation; // Assuming this is in radians
 
         // Define the 3 points of the triangle relative to (0,0)
@@ -136,5 +137,9 @@ impl Ship {
         // Slow down over time (friction)
         self.velocity *= 1.0 - (FRICTION * dt); // Friction factor
         self.rotation_speed *= 1.0 - (FRICTION * dt); // Friction factor
+    }
+
+    pub fn collision_asteroid(&self, asteroid: &Asteroid) -> bool {
+        physics::circle_collision(self.position, SHIP_RADIUS, asteroid.get_position(), asteroid.get_size() as f32 / 1.5)
     }
 }

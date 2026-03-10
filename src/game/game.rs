@@ -1,4 +1,4 @@
-use crate::game::objects::{asteroid::{Asteroid}, bullet::Bullet, ship::Ship};
+use crate::{game::objects::{asteroid::Asteroid, bullet::Bullet, ship::Ship}};
 
 
 pub enum GameInput {
@@ -8,11 +8,7 @@ pub enum GameInput {
     Shoot { current_time: f64 },
 }
 pub struct Game {
-    // Seeds for asteroid generation and destruction, to ensure deterministic behavior across clients
-    spawn_seed: u32,
-    destroy_seed: u32,
-
-    score: u32,
+    collected_rocks: u32,
     asteroids: Vec<Asteroid>,
     ship: Ship,
     bullets: Vec<Bullet>,
@@ -21,9 +17,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         Self {
-            spawn_seed: 0,
-            destroy_seed: 0,
-            score: 0,
+            collected_rocks: 0,
             asteroids: vec!(),
             ship: Ship::new(),
             bullets: vec!(),
@@ -51,9 +45,7 @@ impl Game {
         );
     }
 
-    pub fn update(&mut self, dt: f32, current_time: f64) -> GameEvent {
-        let out_event = GameEvent::new();
-
+    pub fn update(&mut self, dt: f32, current_time: f64, mut handler: impl FnMut(GameEvent)) {
         // Update ship
         self.ship.update(dt);
 
@@ -73,6 +65,8 @@ impl Game {
 
                 // Check collision
                 if asteroid.check_bullet_collision(bullet.get_position()) {
+                    // Send asteroid destroyed event
+                    handler(GameEvent::AsteroidDestroyed { size: asteroid.get_size() });
 
                     // Add new asteroid
                     new_asteroids.push(Asteroid::hit_and_copy(asteroid));
@@ -83,6 +77,11 @@ impl Game {
 
                 return true; // Retain bullet
             });
+
+            // Check collision with ship
+            if self.ship.collision_asteroid(asteroid) {
+                handler(GameEvent::Died);
+            }
         }
 
         // Adding asteroids to self
@@ -90,7 +89,7 @@ impl Game {
 
         // Asteroid collisions
         let len = self.asteroids.len();
-        if len < 2 { return out_event; } // Cannot collide 1 or 0 asteroids
+        if len < 2 { return; } // Cannot collide 1 or 0 asteroids
 
         for i in 0..len - 1 { // Loop to second-to-last
             let (head, tail) = self.asteroids.split_at_mut(i + 1);
@@ -104,8 +103,6 @@ impl Game {
                 }
             }
         }
-
-        out_event
     }
 
     pub fn draw(&mut self, ui: &mut egui::Ui, size: f32, play_area: egui::Rect) {
@@ -119,20 +116,9 @@ impl Game {
     }
 }
 
-pub struct GameEvent {
-    pub died: bool,
-    pub score: u32,
-    pub asteroid_destroyed: bool,
-    pub bullet_fired: bool,
-}
-
-impl GameEvent {
-    pub fn new() -> Self {
-        Self {
-            died: false,
-            score: 0,
-            asteroid_destroyed: false,
-            bullet_fired: false,
-        }
-    }
+pub enum GameEvent {
+    Died,
+    AsteroidDestroyed { size: u8 },
+    // PlayerTargetChanged,
+    
 }
