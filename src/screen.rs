@@ -3,6 +3,7 @@ use egui::{Context, Ui};
 pub enum ScreenCommand {
     Start,
     Play,
+    Host,
     Settings,
     ExitProgram,
 }

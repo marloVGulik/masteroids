@@ -7,7 +7,14 @@ pub enum GameInput {
     Forward { dt: f32 },
     Shoot { current_time: f64 },
 }
+#[derive(PartialEq)]
+pub enum GameState {
+    Waiting,
+    Active,
+    GameOver,
+}
 pub struct Game {
+    state: GameState,
     collected_rocks: u32,
     asteroids: Vec<Asteroid>,
     ship: Ship,
@@ -17,6 +24,7 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         Self {
+            state: GameState::Waiting,
             collected_rocks: 0,
             asteroids: vec!(),
             ship: Ship::new(),
@@ -43,9 +51,12 @@ impl Game {
         self.asteroids.push(
             Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 45.0, 5),
         );
+        self.state = GameState::Active;
     }
 
     pub fn update(&mut self, dt: f32, current_time: f64, mut handler: impl FnMut(GameEvent)) {
+        if self.state != GameState::Active { return; }
+
         // Update ship
         self.ship.update(dt);
 

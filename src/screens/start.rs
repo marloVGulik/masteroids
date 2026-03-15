@@ -20,6 +20,9 @@ impl Screen for Start {
             if ui.button("Play").clicked() {
                 cmd = Some(ScreenCommand::Play);
             }
+            if ui.button("Host").clicked() {
+                cmd = Some(ScreenCommand::Host);
+            }
             if ui.button("Settings").clicked() {
                 cmd = Some(ScreenCommand::Settings);
             }
