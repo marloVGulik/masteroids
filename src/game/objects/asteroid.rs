@@ -1,6 +1,7 @@
 use crate::core::physics;
 
 const MIN_SIZE: f32 = 2.0;
+const SIZE_MULTIPLIER: f32 = 0.75;
 
 pub struct Asteroid {
     position: egui::Pos2,
@@ -106,7 +107,7 @@ impl Asteroid {
         self.size
     }
     pub fn get_physical_radius(&self) -> f32 {
-        MIN_SIZE * (self.size as f32 / 1.5)
+        MIN_SIZE * (self.size as f32 * SIZE_MULTIPLIER)
     }
     pub fn get_position(&self) -> egui::Pos2 {
         self.position

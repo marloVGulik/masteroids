@@ -43,8 +43,8 @@ impl EframeApp for App {
                 screen::ScreenCommand::Start => {
                     self.current_screen = Box::new(screens::start::Start::new());
                 }
-                screen::ScreenCommand::Play => {
-                    self.current_screen = Box::new(screens::player::Player::new());
+                screen::ScreenCommand::Play { hostname, username } => {
+                    self.current_screen = Box::new(screens::player::Player::new(hostname, username));
                 }
                 screen::ScreenCommand::Host => {
                     self.current_screen = Box::new(screens::host::Host::new());

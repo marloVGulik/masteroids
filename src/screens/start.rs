@@ -3,11 +3,17 @@ use crate::screen::Screen;
 
 
 
-pub struct Start;
+pub struct Start {
+    hostname: String,
+    username: String,
+}
 
 impl Start {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            hostname: "".to_string(),
+            username: "".to_string(),
+        }
     }
 }
 
@@ -17,8 +23,10 @@ impl Screen for Start {
 
         ui.vertical_centered(|ui| {
             ui.heading("MASTEROIDS");
+            ui.text_edit_singleline(&mut self.hostname);
+            ui.text_edit_singleline(&mut self.username);
             if ui.button("Play").clicked() {
-                cmd = Some(ScreenCommand::Play);
+                cmd = Some(ScreenCommand::Play { hostname: self.hostname.clone(), username: self.username.clone() });
             }
             if ui.button("Host").clicked() {
                 cmd = Some(ScreenCommand::Host);

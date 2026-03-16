@@ -133,6 +133,10 @@ impl Game {
     pub fn get_collected_rocks(&self) -> u32 {
         self.collected_rocks
     }
+
+    pub fn set_state(&mut self, state: GameState) {
+        self.state = state;
+    }
 }
 
 pub enum GameEvent {

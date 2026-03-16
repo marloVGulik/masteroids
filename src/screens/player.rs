@@ -1,16 +1,23 @@
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
-
-use crate::game::game::{Game, GameInput};
+use crate::core::networking::{NetworkManager, NetworkMessage};
+use crate::game::game::{Game, GameInput, GameState};
 
 pub struct Player {
     game: Game,
+    networkmanager: NetworkManager,
+    hostname: String,
+    username: String,
 }
 
 impl Player {
-    pub fn new() -> Self {
+    pub fn new(hostname: String, username: String) -> Self {
+        let newhn = hostname.clone() + ":42069";
         Self {
             game: Game::new(),
+            networkmanager: NetworkManager::new("0.0.0.0:0"),
+            hostname: newhn,
+            username,
         }
     }
 }
@@ -57,9 +64,18 @@ impl Screen for Player {
 
     fn on_activate(&mut self, _ctx: &egui::Context) {
         self.game.activate();
+        self.networkmanager.emit(&self.hostname, NetworkMessage::Connect { name: self.username.clone() });
     } 
 
     fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) {
+        self.networkmanager.process_incoming(|_addr, msg| {
+            match msg {
+                NetworkMessage::StartGame => {
+                    self.game.set_state(GameState::Active);
+                },
+                _ => {}
+            }
+        });
         ctx.input(|i| {
             // Movement
             if i.key_down(egui::Key::W) {

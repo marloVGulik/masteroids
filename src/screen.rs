@@ -2,7 +2,7 @@ use egui::{Context, Ui};
 
 pub enum ScreenCommand {
     Start,
-    Play,
+    Play { hostname: String, username: String },
     Host,
     Settings,
     ExitProgram,
