@@ -142,6 +142,6 @@ impl Game {
 pub enum GameEvent {
     Died,
     AsteroidDestroyed { size: u8 },
-    // PlayerTargetChanged,
+    PlayerTarget { id: u32 },
     
 }

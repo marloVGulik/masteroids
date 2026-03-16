@@ -7,6 +7,8 @@ pub enum NetworkMessage {
     ShareSeed { spawn_seed: u32, destroy_seed: u32 },
     AsteroidHit { size: u8 },
     Connect { name: String },
+    TargetPlayer { id: u32 },
+    UserAmount { amount: u8 },
 }
 
 #[repr(u8)]
@@ -17,6 +19,8 @@ enum MessageId {
     ShareSeed = 3,
     AsteroidHit = 4,
     Connect = 5,
+    TargetPlayer = 6,
+    UserAmount = 7,
 }
 
 impl NetworkMessage {
@@ -38,6 +42,12 @@ impl NetworkMessage {
                 bytes.extend_from_slice(name.as_bytes());
                 bytes
             },
+            NetworkMessage::TargetPlayer { id } => {
+                let mut bytes = vec![MessageId::TargetPlayer as u8];
+                bytes.extend_from_slice(&id.to_be_bytes());
+                bytes
+            },
+            NetworkMessage::UserAmount { amount } => vec![MessageId::UserAmount as u8, *amount],
         }
     }
 
@@ -58,6 +68,11 @@ impl NetworkMessage {
                 let name = String::from_utf8(bytes[1..].to_vec()).ok()?;
                 Some(NetworkMessage::Connect { name })
             },
+            6 if bytes.len() >= 5 => {
+                let id = u32::from_be_bytes(bytes[1..5].try_into().ok()?);
+                Some(NetworkMessage::TargetPlayer { id })
+            },
+            7 if bytes.len() >= 2 => Some(NetworkMessage::UserAmount { amount: bytes[1] }),
 
             _ => None,
         }
@@ -75,16 +90,16 @@ impl NetworkManager {
         Self { socket }
     }
 
-    pub fn emit(&self, target: &str, msg: NetworkMessage) {
+    pub fn emit(&self, target: &str, msg: &NetworkMessage) {
         let bytes = msg.to_bytes();
         let _ = self.socket.send_to(&bytes, target);
     }
 
-    pub fn process_incoming(&self, mut handler: impl FnMut(std::net::SocketAddr, NetworkMessage)) {
+    pub fn process_incoming(&self, mut handler: impl FnMut(std::net::SocketAddr, &NetworkMessage)) {
         let mut buf = [0u8; 1024];
         while let Ok((size, src)) = self.socket.recv_from(&mut buf) {
             if let Some(msg) = NetworkMessage::from_bytes(&buf[..size]) {
-                handler(src, msg);
+                handler(src, &msg);
             }
         }
     }

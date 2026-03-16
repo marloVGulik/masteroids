@@ -1,13 +1,14 @@
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
 use crate::core::networking::{NetworkManager, NetworkMessage};
-use crate::game::game::{Game, GameInput, GameState};
+use crate::game::game::{Game, GameInput, GameState, GameEvent};
 
 pub struct Player {
     game: Game,
     networkmanager: NetworkManager,
     hostname: String,
     username: String,
+    user_amount: u8,
 }
 
 impl Player {
@@ -18,6 +19,7 @@ impl Player {
             networkmanager: NetworkManager::new("0.0.0.0:0"),
             hostname: newhn,
             username,
+            user_amount: 0,
         }
     }
 }
@@ -35,6 +37,8 @@ impl Screen for Player {
             // let painter = ui.painter();
             // let pos = egui::pos2(100.0, 100.0);
             // painter.circle_filled(pos, 5.0, egui::Color32::RED); // Draw an asteroid
+
+            ui.label(format!("Connected players: {}", self.user_amount));
 
             let available_rect = ui.available_rect_before_wrap();
             let width = available_rect.width();
@@ -64,7 +68,7 @@ impl Screen for Player {
 
     fn on_activate(&mut self, _ctx: &egui::Context) {
         self.game.activate();
-        self.networkmanager.emit(&self.hostname, NetworkMessage::Connect { name: self.username.clone() });
+        self.networkmanager.emit(&self.hostname, &NetworkMessage::Connect { name: self.username.clone() });
     } 
 
     fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) {
@@ -73,6 +77,12 @@ impl Screen for Player {
                 NetworkMessage::StartGame => {
                     self.game.set_state(GameState::Active);
                 },
+                NetworkMessage::Alive => {
+                    self.networkmanager.emit(&self.hostname, &NetworkMessage::Alive);
+                },
+                NetworkMessage::UserAmount { amount } => {
+                    self.user_amount = *amount;
+                }
                 _ => {}
             }
         });
@@ -95,11 +105,16 @@ impl Screen for Player {
 
             self.game.update(i.stable_dt, i.time, |event| {
                 match event {
-                    crate::game::game::GameEvent::Died => {
+                    GameEvent::Died => {
                         println!("Player died!");
                     },
-                    crate::game::game::GameEvent::AsteroidDestroyed { size } => {
+                    GameEvent::AsteroidDestroyed { size } => {
                         println!("Asteroid destroyed with size: {}", size);
+
+                        self.networkmanager.emit(&self.hostname, &NetworkMessage::AsteroidHit { size });
+                    },
+                    GameEvent::PlayerTarget { id } => {
+                        println!("Player targeted with ID: {}", id);
                     },
                 }
             });
