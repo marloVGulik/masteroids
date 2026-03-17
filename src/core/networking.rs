@@ -1,4 +1,4 @@
-use std::{net::UdpSocket};
+use std::net::{ToSocketAddrs, UdpSocket};
 
 pub enum NetworkMessage {
     StartGame,
@@ -85,14 +85,30 @@ pub struct NetworkManager {
 
 impl NetworkManager {
     pub fn new(addr: &str) -> Self {
-        let socket = UdpSocket::bind(addr).expect("Bind failed");
+        let res_addr = NetworkManager::resolver(addr);
+        let final_addr: std::net::SocketAddr;
+        if let Some(ok_res_addr) = res_addr {
+            final_addr = ok_res_addr;
+        } else {
+            final_addr = std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)), 42069);
+        }
+
+        let socket = UdpSocket::bind(
+            format!("{}:{}", final_addr.ip().to_string(), final_addr.port().to_string())).expect("Couldn't bind to address");
         socket.set_nonblocking(true).ok();
-        Self { socket }
+        
+        Self {
+            socket
+        }
     }
 
     pub fn emit(&self, target: &str, msg: &NetworkMessage) {
         let bytes = msg.to_bytes();
-        let _ = self.socket.send_to(&bytes, target);
+        let resolved_target_opt = NetworkManager::resolver(target);
+
+        if let Some(resolved_target) = resolved_target_opt {
+            let _ = self.socket.send_to(&bytes, resolved_target);
+        }
     }
 
     pub fn process_incoming(&self, mut handler: impl FnMut(std::net::SocketAddr, &NetworkMessage)) {
@@ -102,5 +118,21 @@ impl NetworkManager {
                 handler(src, &msg);
             }
         }
+    }
+
+    fn resolver(addr: &str) -> Option<std::net::SocketAddr> {
+        let resolved_addr = addr.to_socket_addrs();
+        if let Ok(all_ips) = resolved_addr {
+            let collected_ips: Vec<_> = all_ips.collect();
+
+            // Prefer IPv4 for local testing
+            if let Some(ipv4_addr) = collected_ips.iter().find(|ip| ip.is_ipv4()) {
+                return Some(*ipv4_addr);
+            }
+
+            return collected_ips.get(0).copied();
+        }
+
+        return None;
     }
 }

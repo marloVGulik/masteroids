@@ -40,7 +40,7 @@ impl Host {
     pub fn new() -> Self {
         Self {
             users: Vec::new(),
-            networkmanager: NetworkManager::new("0.0.0.0:42069"),
+            networkmanager: NetworkManager::new("[::]:42069"),
             scheduler: Scheduler::new(),
         }
     }

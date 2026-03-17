@@ -1,4 +1,7 @@
-use crate::{game::objects::{asteroid::Asteroid, bullet::Bullet, ship::Ship}};
+use std::time::Duration;
+
+use crate::{core::scheduler, game::objects::{asteroid::Asteroid, bullet::Bullet, ship::Ship}};
+use crate::core::scheduler::{Scheduler, Task};
 
 
 pub enum GameInput {
@@ -15,20 +18,30 @@ pub enum GameState {
 }
 pub struct Game {
     state: GameState,
+    scheduler: Scheduler<InternalEvents>,
     collected_rocks: u32,
     asteroids: Vec<Asteroid>,
     ship: Ship,
     bullets: Vec<Bullet>,
+
+    health: u8,
+    immune: bool
+}
+enum InternalEvents {
+    Immunity { on: bool }
 }
 
 impl Game {
     pub fn new() -> Self {
         Self {
             state: GameState::Waiting,
+            scheduler: Scheduler::new(),
             collected_rocks: 0,
             asteroids: vec!(),
             ship: Ship::new(),
             bullets: vec!(),
+            health: 3,
+            immune: false
         }
     }
 
@@ -56,6 +69,14 @@ impl Game {
 
     pub fn update(&mut self, dt: f32, current_time: f64, mut handler: impl FnMut(GameEvent)) {
         if self.state != GameState::Active { return; }
+
+        self.scheduler.update(|event| {
+            match event {
+                InternalEvents::Immunity { on}=> {
+                    self.immune = *on;
+                }
+            }
+        });
 
         // Update ship
         self.ship.update(dt);
@@ -94,8 +115,17 @@ impl Game {
             });
 
             // Check collision with ship
-            if self.ship.collision_asteroid(asteroid) {
-                handler(GameEvent::Died);
+            if self.ship.collision_asteroid(asteroid) && !self.immune {
+                self.ship.move_from_asteroid(asteroid);
+                self.health -= 1;
+                self.immune = true;
+                self.scheduler.schedule(
+                    "remove_immunity".to_owned(), 
+                    Duration::from_secs(1), 
+                    false, 
+                    InternalEvents::Immunity { on: false }
+                );
+                handler(GameEvent::Damage { health: self.health });
             }
         }
 
@@ -140,8 +170,7 @@ impl Game {
 }
 
 pub enum GameEvent {
-    Died,
+    Damage { health: u8 },
     AsteroidDestroyed { size: u8 },
     PlayerTarget { id: u32 },
-    
 }

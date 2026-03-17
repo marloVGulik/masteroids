@@ -13,11 +13,12 @@ pub struct Player {
 
 impl Player {
     pub fn new(hostname: String, username: String) -> Self {
-        let newhn = hostname.clone() + ":42069";
+        // let newhn = hostname.clone() + ":42069";
+        let new_hostname = hostname.clone();
         Self {
             game: Game::new(),
             networkmanager: NetworkManager::new("0.0.0.0:0"),
-            hostname: newhn,
+            hostname: new_hostname,
             username,
             user_amount: 0,
         }
@@ -68,6 +69,8 @@ impl Screen for Player {
 
     fn on_activate(&mut self, _ctx: &egui::Context) {
         self.game.activate();
+
+        println!("Connecting to {}", self.hostname);
         self.networkmanager.emit(&self.hostname, &NetworkMessage::Connect { name: self.username.clone() });
     } 
 
@@ -105,8 +108,8 @@ impl Screen for Player {
 
             self.game.update(i.stable_dt, i.time, |event| {
                 match event {
-                    GameEvent::Died => {
-                        println!("Player died!");
+                    GameEvent::Damage { health } => {
+                        println!("Player got damaged! Health: {}", health);
                     },
                     GameEvent::AsteroidDestroyed { size } => {
                         println!("Asteroid destroyed with size: {}", size);

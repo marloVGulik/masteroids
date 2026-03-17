@@ -142,4 +142,40 @@ impl Ship {
     pub fn collision_asteroid(&self, asteroid: &Asteroid) -> bool {
         physics::circle_collision(self.position, SHIP_RADIUS, asteroid.get_position(), asteroid.get_size() as f32 / 1.5)
     }
+
+    pub fn move_from_asteroid(&mut self, asteroid: &Asteroid) {
+        let delta = self.position - asteroid.get_position();
+        let distance = delta.length();
+        let min_dist = SHIP_RADIUS + asteroid.get_physical_radius();
+
+        // 1. Only act if they are actually overlapping
+        if distance < min_dist && distance > 0.0 {
+            let push_direction = delta / distance; // Normalized vector
+            
+            // 2. Position Correction
+            // Move the asteroid out of the collision immediately.
+            // We move it by half the overlap (the other asteroid moves the other half).
+            let overlap = min_dist - distance;
+            self.position += push_direction * (overlap * 0.5);
+
+            // 3. Velocity Reflection
+            // We use a "conservation of momentum" approach.
+            // The force factor you calculated is good for mass scaling!
+            let mass_ratio = 2.0;
+            
+            // Reflect velocity across the collision normal
+            // This stops the infinite acceleration loop
+            let speed = self.velocity.length();
+            let dot = self.velocity.dot(push_direction);
+            
+            if dot < 0.0 {
+                // Only bounce if they are moving TOWARDS each other
+                // This prevents them from getting "sucked" together
+                self.velocity = (self.velocity - 2.0 * dot * push_direction) * 0.85; // 0.8 for "bounciness" loss
+            }
+            
+            // Add a small "impulse" based on the other's size to make it feel impactful
+            self.velocity += push_direction * (speed * mass_ratio * 0.2);
+        }
+    }
 }
