@@ -1,12 +1,14 @@
+use egui::Stroke;
+
 use crate::{core::physics, game::objects::{asteroid::Asteroid, bullet::Bullet}};
 
 const SHIP_RADIUS: f32 = 3.0;
 // const MAX_SPEED: f32 = 50.0;
-const ACCELERATION: f32 = 50.0; // Acceleration factor
-const FRICTION: f32 = 0.5; // Friction factor
+const ACCELERATION: f32 = 60.0; // Acceleration factor
+const FRICTION: f32 = 0.7; // Friction factor
 
-const MAX_ROTATION_SPEED: f32 = 10.0;
-const ROTATION_ACCELERATION: f32 = 5.0; // Rotation acceleration factor
+const MAX_ROTATION_SPEED: f32 = 20.0;
+const ROTATION_ACCELERATION: f32 = 10.0; // Rotation acceleration factor
 // const ROTATION_FRICTION: f32 = 0.1; // Rotation friction factor
 
 const SHOT_COOLDOWN: f64 = 0.5; // seconds
@@ -68,6 +70,9 @@ impl Ship {
         let ship_radius = SHIP_RADIUS * size_mp;
         let angle = self.rotation; // Assuming this is in radians
 
+        // Debug circle for ship
+        ui.painter().add(egui::Shape::circle_stroke(draw_position, ship_radius, Stroke::new(3.0, egui::Color32::DARK_RED)));
+
         // Define the 3 points of the triangle relative to (0,0)
         let points = [
             egui::pos2(ship_radius, 0.0),          // Nose
@@ -92,6 +97,7 @@ impl Ship {
             fill: egui::Color32::BLUE,
             stroke: egui::Stroke::new(1.0, egui::Color32::WHITE).into(),
         }));
+
 
         if self.thrusting {
             let flame_points = [
@@ -140,7 +146,7 @@ impl Ship {
     }
 
     pub fn collision_asteroid(&self, asteroid: &Asteroid) -> bool {
-        physics::circle_collision(self.position, SHIP_RADIUS, asteroid.get_position(), asteroid.get_size() as f32 / 1.5)
+        physics::circle_collision(self.position, SHIP_RADIUS, asteroid.get_position(), asteroid.get_physical_radius() as f32)
     }
 
     pub fn move_from_asteroid(&mut self, asteroid: &Asteroid) {

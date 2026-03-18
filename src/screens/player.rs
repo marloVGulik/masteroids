@@ -59,7 +59,7 @@ impl Screen for Player {
             
             self.game.draw(&mut game_ui, size, play_area);
 
-            ui.label(format!("Collected rocks: {}", self.game.get_collected_rocks()));
+            ui.label(format!("Health: {}       Collected rocks: {}", self.game.get_health(), self.game.get_collected_rocks()));
         });
 
         ctx.request_repaint();
@@ -74,7 +74,9 @@ impl Screen for Player {
         self.networkmanager.emit(&self.hostname, &NetworkMessage::Connect { name: self.username.clone() });
     } 
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) -> Option<ScreenCommand> {
+        let mut cmd = None;
+
         self.networkmanager.process_incoming(|_addr, msg| {
             match msg {
                 NetworkMessage::StartGame => {
@@ -89,6 +91,7 @@ impl Screen for Player {
                 _ => {}
             }
         });
+
         ctx.input(|i| {
             // Movement
             if i.key_down(egui::Key::W) {
@@ -110,6 +113,9 @@ impl Screen for Player {
                 match event {
                     GameEvent::Damage { health } => {
                         println!("Player got damaged! Health: {}", health);
+                        if health == 0 {
+                            cmd = Some(ScreenCommand::Start);
+                        }
                     },
                     GameEvent::AsteroidDestroyed { size } => {
                         println!("Asteroid destroyed with size: {}", size);
@@ -122,5 +128,7 @@ impl Screen for Player {
                 }
             });
         });
+        
+        return cmd;
     }
 }

@@ -75,7 +75,7 @@ impl Screen for Host {
 
         cmd
     }
-    fn update(&mut self, _ctx: &egui::Context, _event: &eframe::Frame) {
+    fn update(&mut self, _ctx: &egui::Context, _event: &eframe::Frame) -> Option<ScreenCommand> {
         // Check scheduled tasks
         self.scheduler.update(|tasks| {
             match tasks {
@@ -133,6 +133,8 @@ impl Screen for Host {
         if update_player_amount {
             self.emit_all(&NetworkMessage::UserAmount { amount: self.users.len() as u8 });
         }
+
+        return None;
     }
 
     fn on_activate(&mut self, _ctx: &egui::Context) {

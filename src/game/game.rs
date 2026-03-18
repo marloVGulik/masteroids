@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use crate::{core::scheduler, game::objects::{asteroid::Asteroid, bullet::Bullet, ship::Ship}};
-use crate::core::scheduler::{Scheduler, Task};
+use crate::game::objects::{asteroid::Asteroid, bullet::Bullet, ship::Ship};
+use crate::core::scheduler::{Scheduler};
 
 
 pub enum GameInput {
@@ -59,11 +59,11 @@ impl Game {
     }
     pub fn activate(&mut self) {
         self.asteroids.push(
-            Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 135.0, 5),
+            Asteroid::new(egui::pos2(20.0, 70.0), 10.0, 135.0, 5),
         );
-        self.asteroids.push(
-            Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 45.0, 5),
-        );
+        // self.asteroids.push(
+        //     Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 45.0, 5),
+        // );
         self.state = GameState::Active;
     }
 
@@ -104,6 +104,7 @@ impl Game {
                         println!("Collected a rock!");
                         self.collected_rocks += 1;
                     }
+
                     // Add new asteroid
                     new_asteroids.push(Asteroid::hit_and_copy(asteroid));
                     
@@ -115,17 +116,19 @@ impl Game {
             });
 
             // Check collision with ship
-            if self.ship.collision_asteroid(asteroid) && !self.immune {
+            if self.ship.collision_asteroid(asteroid) {
                 self.ship.move_from_asteroid(asteroid);
-                self.health -= 1;
-                self.immune = true;
-                self.scheduler.schedule(
-                    "remove_immunity".to_owned(), 
-                    Duration::from_secs(1), 
-                    false, 
-                    InternalEvents::Immunity { on: false }
-                );
-                handler(GameEvent::Damage { health: self.health });
+                if !self.immune {
+                    self.health -= 1;
+                    self.immune = true;
+                    self.scheduler.schedule(
+                        "remove_immunity".to_owned(), 
+                        Duration::from_secs(1), 
+                        false, 
+                        InternalEvents::Immunity { on: false }
+                    );
+                    handler(GameEvent::Damage { health: self.health });
+                }
             }
         }
 
@@ -148,6 +151,11 @@ impl Game {
                 }
             }
         }
+
+        // Remove asteroids with size 0 (Fixes the invisible asteroids?)
+        self.asteroids.retain(|a| {
+            a.get_size() > 0
+        });
     }
 
     pub fn draw(&mut self, ui: &mut egui::Ui, size: f32, play_area: egui::Rect) {
@@ -162,6 +170,9 @@ impl Game {
 
     pub fn get_collected_rocks(&self) -> u32 {
         self.collected_rocks
+    }
+    pub fn get_health(&self) -> u8 {
+        self.health
     }
 
     pub fn set_state(&mut self, state: GameState) {

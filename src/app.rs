@@ -28,15 +28,20 @@ impl App {
 impl EframeApp for App {    
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Update physics and handle input
-        self.current_screen.update(&ctx, &frame);
 
-        let mut next_screen: Option<screen::ScreenCommand> = None;
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading(&self.label);
-            ui.label("Frietsaus moment");
+        let mut next_screen: Option<screen::ScreenCommand>;
 
-            next_screen = self.current_screen.ui(ctx, ui, egui::Order::Foreground);
-        });
+        next_screen = self.current_screen.update(&ctx, &frame);
+
+        if next_screen.is_none() {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.heading(&self.label);
+                ui.label("Frietsaus moment");
+
+                next_screen = self.current_screen.ui(ctx, ui, egui::Order::Foreground);
+            });
+        }
+        
 
         if let Some(cmd) = next_screen {
             match cmd {

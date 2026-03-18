@@ -1,5 +1,5 @@
-const SPEED: f32 = 75.0;
-const LIFETIME: f64 = 2.0; // seconds
+const SPEED: f32 = 125.0;
+const LIFETIME: f64 = 1.2; // seconds
 
 pub struct Bullet {
     position: egui::Pos2,
