@@ -3,6 +3,8 @@ use crate::screen::ScreenCommand;
 use crate::screen::Screen;
 use crate::core::scheduler::{Scheduler};
 
+use rand::{self, RngExt};
+
 const USER_TIMEOUT: u8 = 10; // Number of alive checks before a user is considered disconnected
 
 #[derive(Clone)]
@@ -28,12 +30,14 @@ impl Users {
 }
 enum Tasks {
     CheckAlive,
+    SummonAsteroids,
 }
 
 pub struct Host {
     users: Vec<Users>,
     networkmanager: NetworkManager,
     scheduler: Scheduler<Tasks>,
+    randomizer: rand::prelude::ThreadRng,
 }
 
 impl Host {
@@ -42,6 +46,7 @@ impl Host {
             users: Vec::new(),
             networkmanager: NetworkManager::new("[::]:42069"),
             scheduler: Scheduler::new(),
+            randomizer: rand::rng(),
         }
     }
 
@@ -85,6 +90,45 @@ impl Screen for Host {
                         self.networkmanager.emit(&user.addr.to_string(), &NetworkMessage::Alive);
                     }
                 },
+                Tasks::SummonAsteroids => {
+                    // let users_random = self.randomizer.random_range(1..=self.users.len());
+
+                    // if let Some(selected_user) = self.users.get(users_random) {
+                    //     let x: f32 = self.randomizer.random_range(0.0..=100.0);
+                    //     let y: f32 = self.randomizer.random_range(0.0..=100.0);
+                    //     let direction: f32 = self.randomizer.random_range(0.0..=360.0);
+                    //     let speed: f32 = self.randomizer.random_range(0.0..10.0);
+
+                    //     self.networkmanager.emit_socket(
+                    //         &selected_user.addr, 
+                    //         &NetworkMessage::SummonAsteroid { 
+                    //             x, 
+                    //             y, 
+                    //             direction, 
+                    //             speed 
+                    //         }
+                    //     );
+                    // }
+                    println!("Time for new asteroids for {} users", self.users.len());
+                    for user in self.users.iter() {
+                        let x: f32 = self.randomizer.random_range(0.0..=100.0);
+                        let y: f32 = self.randomizer.random_range(0.0..=100.0);
+                        let direction: f32 = self.randomizer.random_range(0.0..=360.0);
+                        let speed: f32 = self.randomizer.random_range(0.0..10.0);
+                        let size: u8 = self.randomizer.random_range(0..=3);
+
+                        self.networkmanager.emit_socket(
+                            &user.addr, 
+                            &NetworkMessage::SummonAsteroid { 
+                                x, 
+                                y, 
+                                direction, 
+                                speed,
+                                size 
+                            }
+                        );
+                    }
+                }
             }
         });
 
@@ -139,10 +183,16 @@ impl Screen for Host {
 
     fn on_activate(&mut self, _ctx: &egui::Context) {
         self.scheduler.schedule(
-            "alive_check".to_string(), 
+            "alive_check", 
             std::time::Duration::from_secs(1), 
             true,
             Tasks::CheckAlive
+        );
+        self.scheduler.schedule(
+            "spawn_asteroid", 
+            std::time::Duration::from_secs(5), 
+            true, 
+            Tasks::SummonAsteroids
         );
     }
 }

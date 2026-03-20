@@ -5,10 +5,14 @@ use crate::core::scheduler::{Scheduler};
 
 
 pub enum GameInput {
+    // Direct player input
     Left { dt: f32 },
     Right { dt: f32 },
     Forward { dt: f32 },
     Shoot { current_time: f64 },
+
+    // Networking input
+    SummonAsteroid { x: f32, y: f32, direction: f32, speed: f32, size: u8 },
 }
 #[derive(PartialEq)]
 pub enum GameState {
@@ -54,6 +58,10 @@ impl Game {
                 if let Some(bullet) = self.ship.shoot(current_time) {
                     self.bullets.push(bullet);
                 }
+            },
+
+            GameInput::SummonAsteroid { x, y, direction, speed , size} => {
+                self.asteroids.push(Asteroid::new(egui::pos2(x, y), speed, direction, size));
             }
         }
     }
@@ -122,7 +130,7 @@ impl Game {
                     self.health -= 1;
                     self.immune = true;
                     self.scheduler.schedule(
-                        "remove_immunity".to_owned(), 
+                        "remove_immunity", 
                         Duration::from_secs(1), 
                         false, 
                         InternalEvents::Immunity { on: false }

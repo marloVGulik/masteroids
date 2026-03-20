@@ -88,6 +88,9 @@ impl Screen for Player {
                 NetworkMessage::UserAmount { amount } => {
                     self.user_amount = *amount;
                 }
+                NetworkMessage::SummonAsteroid { x, y, direction, speed, size } => {
+                    self.game.interact(GameInput::SummonAsteroid { x: *x, y: *y, direction: *direction, speed: *speed, size: *size });
+                }
                 _ => {}
             }
         });

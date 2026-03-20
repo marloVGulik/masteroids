@@ -1,4 +1,4 @@
-use std::net::{ToSocketAddrs, UdpSocket};
+use std::{net::{ToSocketAddrs, UdpSocket}};
 
 pub enum NetworkMessage {
     StartGame,
@@ -9,6 +9,7 @@ pub enum NetworkMessage {
     Connect { name: String },
     TargetPlayer { id: u32 },
     UserAmount { amount: u8 },
+    SummonAsteroid { x: f32, y: f32, direction: f32, speed: f32, size: u8 }
 }
 
 #[repr(u8)]
@@ -21,6 +22,7 @@ enum MessageId {
     Connect = 5,
     TargetPlayer = 6,
     UserAmount = 7,
+    SummonAsteroid = 8,
 }
 
 impl NetworkMessage {
@@ -48,12 +50,24 @@ impl NetworkMessage {
                 bytes
             },
             NetworkMessage::UserAmount { amount } => vec![MessageId::UserAmount as u8, *amount],
+            NetworkMessage::SummonAsteroid { x, y, direction, speed , size} => {
+                let mut bytes = vec![MessageId::SummonAsteroid as u8];
+                bytes.extend_from_slice(&x.to_be_bytes());
+                bytes.extend_from_slice(&y.to_be_bytes());
+                bytes.extend_from_slice(&direction.to_be_bytes());
+                bytes.extend_from_slice(&speed.to_be_bytes());
+                bytes.extend_from_slice(&size.to_be_bytes());
+                bytes
+            }
         }
     }
 
     // Convert bytes back into an Enum
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let id = bytes.get(0)?;
+
+        println!("Got netmsg ID {}", id);
+
         match *id {
             0 => Some(NetworkMessage::StartGame),
             1 => Some(NetworkMessage::Ready),
@@ -73,8 +87,22 @@ impl NetworkMessage {
                 Some(NetworkMessage::TargetPlayer { id })
             },
             7 if bytes.len() >= 2 => Some(NetworkMessage::UserAmount { amount: bytes[1] }),
-
-            _ => None,
+            8 if bytes.len() >= 18 => {
+                let x = f32::from_be_bytes(bytes[1..5].try_into().ok()?);
+                let y = f32::from_be_bytes(bytes[5..9].try_into().ok()?);
+                let direction = f32::from_be_bytes(bytes[9..13].try_into().ok()?);
+                let speed = f32::from_be_bytes(bytes[13..17].try_into().ok()?);
+                let size = u8::from_be_bytes(bytes[17..18].try_into().ok()?);
+                
+                Some(NetworkMessage::SummonAsteroid { 
+                    x, 
+                    y, 
+                    direction, 
+                    speed, 
+                    size 
+                })
+            },
+            _ => None
         }
     }
 }
@@ -103,12 +131,14 @@ impl NetworkManager {
     }
 
     pub fn emit(&self, target: &str, msg: &NetworkMessage) {
-        let bytes = msg.to_bytes();
         let resolved_target_opt = NetworkManager::resolver(target);
 
         if let Some(resolved_target) = resolved_target_opt {
-            let _ = self.socket.send_to(&bytes, resolved_target);
+            self.emit_socket(&resolved_target, msg);
         }
+    }
+    pub fn emit_socket(&self, target: &std::net::SocketAddr, msg: &NetworkMessage) {
+        let _ = self.socket.send_to(&msg.to_bytes(), target);
     }
 
     pub fn process_incoming(&self, mut handler: impl FnMut(std::net::SocketAddr, &NetworkMessage)) {

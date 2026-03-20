@@ -17,9 +17,9 @@ impl<T> Scheduler<T> {
         Self { tasks: Vec::new() }
     }
 
-    pub fn schedule(&mut self, name: String, wait_time: std::time::Duration, repeat: bool, action: T) {
+    pub fn schedule(&mut self, name: &str, wait_time: std::time::Duration, repeat: bool, action: T) {
         self.tasks.push(Task {
-            name,
+            name: name.to_string(),
             start_time: std::time::Instant::now(),
             wait_time,
             repeat,
@@ -29,6 +29,11 @@ impl<T> Scheduler<T> {
     }
     pub fn unschedule(&mut self, name: &str) {
         self.tasks.retain(|task| task.name != name);
+    }
+    pub fn set_wait_time(&mut self, name: &str, wait_time: std::time::Duration) {
+        if let Some(task) = &mut self.tasks.iter_mut().find(|s| s.name == name) {
+            task.wait_time = wait_time;
+        }
     }
 
     pub fn update(&mut self, mut handler: impl FnMut(&mut T)) {
