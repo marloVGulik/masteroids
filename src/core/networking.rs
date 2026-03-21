@@ -2,7 +2,7 @@ use std::{net::{ToSocketAddrs, UdpSocket}};
 
 pub enum NetworkMessage {
     StartGame,
-    Ready,
+    Ready { is_ready: u8 },
     Alive,
     ShareSeed { spawn_seed: u32, destroy_seed: u32 },
     AsteroidHit { size: u8 },
@@ -30,7 +30,11 @@ impl NetworkMessage {
     pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             NetworkMessage::StartGame => vec![MessageId::StartGame as u8],
-            NetworkMessage::Ready => vec![MessageId::Ready as u8],
+            NetworkMessage::Ready { is_ready } => {
+                let mut bytes = vec![MessageId::Ready as u8];
+                bytes.extend_from_slice(&is_ready.to_be_bytes());
+                bytes
+            },
             NetworkMessage::Alive => vec![MessageId::Alive as u8],
             NetworkMessage::ShareSeed { spawn_seed, destroy_seed } => {
                 let mut bytes = vec![MessageId::ShareSeed as u8];
@@ -70,7 +74,7 @@ impl NetworkMessage {
 
         match *id {
             0 => Some(NetworkMessage::StartGame),
-            1 => Some(NetworkMessage::Ready),
+            1 if bytes.len() >= 2 => Some(NetworkMessage::Ready { is_ready: bytes[1] }),
             2 => Some(NetworkMessage::Alive),
             3 if bytes.len() >= 9 => {
                 let spawn_seed = u32::from_be_bytes(bytes[1..5].try_into().ok()?);
@@ -102,7 +106,10 @@ impl NetworkMessage {
                     size 
                 })
             },
-            _ => None
+            _ => {
+                println!("Failed message with id {}", id);
+                None
+            }
         }
     }
 }

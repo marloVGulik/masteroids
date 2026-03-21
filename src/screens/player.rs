@@ -9,6 +9,7 @@ pub struct Player {
     hostname: String,
     username: String,
     user_amount: u8,
+    is_ready: bool
 }
 
 impl Player {
@@ -21,6 +22,7 @@ impl Player {
             hostname: new_hostname,
             username,
             user_amount: 0,
+            is_ready: false
         }
     }
 }
@@ -33,6 +35,13 @@ impl Screen for Player {
             ui.heading("Game");
             if ui.button("Back").clicked() {
                 cmd = Some(ScreenCommand::Start);
+            }
+            if ui.button("Ready!").clicked() {
+                self.is_ready = !self.is_ready;
+                let msg = NetworkMessage::Ready {
+                    is_ready: self.is_ready as u8
+                };
+                self.networkmanager.emit(&self.hostname, &msg);
             }
 
             // let painter = ui.painter();
@@ -70,8 +79,13 @@ impl Screen for Player {
     fn on_activate(&mut self, _ctx: &egui::Context) {
         self.game.activate();
 
-        println!("Connecting to {}", self.hostname);
-        self.networkmanager.emit(&self.hostname, &NetworkMessage::Connect { name: self.username.clone() });
+        // If hostname is filled in:
+        if !self.hostname.is_empty() {
+            println!("Connecting to {}", self.hostname);
+            self.networkmanager.emit(&self.hostname, &NetworkMessage::Connect { name: self.username.clone() });
+        } else {
+            self.game.set_state(GameState::Active);
+        }
     } 
 
     fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) -> Option<ScreenCommand> {

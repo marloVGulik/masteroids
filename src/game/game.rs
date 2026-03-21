@@ -66,13 +66,13 @@ impl Game {
         }
     }
     pub fn activate(&mut self) {
-        self.asteroids.push(
-            Asteroid::new(egui::pos2(20.0, 70.0), 10.0, 135.0, 5),
-        );
+        // self.asteroids.push(
+        //     Asteroid::new(egui::pos2(20.0, 70.0), 10.0, 135.0, 5),
+        // );
         // self.asteroids.push(
         //     Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 45.0, 5),
         // );
-        self.state = GameState::Active;
+        // self.state = GameState::Active;
     }
 
     pub fn update(&mut self, dt: f32, current_time: f64, mut handler: impl FnMut(GameEvent)) {

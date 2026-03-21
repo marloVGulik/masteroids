@@ -15,6 +15,7 @@ pub struct Users {
     score: u32,
     last_alive: u8,
     target_player_id: Option<u32>,
+    is_ready: bool
 }
 impl Users {
     pub fn new(name: String, addr: std::net::SocketAddr, id: u32) -> Self {
@@ -25,6 +26,7 @@ impl Users {
             score: 0,
             last_alive: 0,
             target_player_id: None,
+            is_ready: false,
         }
     }
 }
@@ -91,23 +93,14 @@ impl Screen for Host {
                     }
                 },
                 Tasks::SummonAsteroids => {
+                    if self.users.iter().filter(|user| !user.is_ready).count() > 0 {
+                        return;
+                    }
+
                     // let users_random = self.randomizer.random_range(1..=self.users.len());
 
                     // if let Some(selected_user) = self.users.get(users_random) {
-                    //     let x: f32 = self.randomizer.random_range(0.0..=100.0);
-                    //     let y: f32 = self.randomizer.random_range(0.0..=100.0);
-                    //     let direction: f32 = self.randomizer.random_range(0.0..=360.0);
-                    //     let speed: f32 = self.randomizer.random_range(0.0..10.0);
-
-                    //     self.networkmanager.emit_socket(
-                    //         &selected_user.addr, 
-                    //         &NetworkMessage::SummonAsteroid { 
-                    //             x, 
-                    //             y, 
-                    //             direction, 
-                    //             speed 
-                    //         }
-                    //     );
+                        // Spawn asteroid
                     // }
                     println!("Time for new asteroids for {} users", self.users.len());
                     for user in self.users.iter() {
@@ -134,6 +127,7 @@ impl Screen for Host {
 
         // Process incoming network messages
         let mut update_player_amount = false;
+        let mut start_game = false;
         self.networkmanager.process_incoming(|addr, msg| {
             match msg {
                 NetworkMessage::Connect { name } => {
@@ -143,6 +137,17 @@ impl Screen for Host {
                     
                     update_player_amount = true;
                 },
+                NetworkMessage::Ready { is_ready } => {
+                    if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
+                        println!("User is_ready: {}", *is_ready);
+                        user.is_ready = *is_ready > 0;
+                    }
+
+                    if self.users.iter().filter(|user| !user.is_ready).count() == 0 {
+                        // println!("All players are ready");
+                        start_game = true;
+                    }
+                }
                 NetworkMessage::Alive => {
                     if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
                         user.last_alive = 0; // Reset alive counter
@@ -176,6 +181,10 @@ impl Screen for Host {
         // Emit user amount
         if update_player_amount {
             self.emit_all(&NetworkMessage::UserAmount { amount: self.users.len() as u8 });
+        }
+
+        if self.users.len() > 1 {
+            self.emit_all(&NetworkMessage::StartGame);
         }
 
         return None;
