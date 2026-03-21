@@ -94,6 +94,7 @@ impl Screen for Player {
         self.networkmanager.process_incoming(|_addr, msg| {
             match msg {
                 NetworkMessage::StartGame => {
+                    println!("Starting game!");
                     self.game.set_state(GameState::Active);
                 },
                 NetworkMessage::Alive => {

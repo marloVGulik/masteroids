@@ -70,7 +70,7 @@ impl NetworkMessage {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         let id = bytes.get(0)?;
 
-        println!("Got netmsg ID {}", id);
+        // println!("Got netmsg ID {}", id);
 
         match *id {
             0 => Some(NetworkMessage::StartGame),

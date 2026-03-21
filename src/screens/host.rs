@@ -97,12 +97,7 @@ impl Screen for Host {
                         return;
                     }
 
-                    // let users_random = self.randomizer.random_range(1..=self.users.len());
-
-                    // if let Some(selected_user) = self.users.get(users_random) {
-                        // Spawn asteroid
-                    // }
-                    println!("Time for new asteroids for {} users", self.users.len());
+                    // println!("Time for new asteroids for {} users", self.users.len());
                     for user in self.users.iter() {
                         let x: f32 = self.randomizer.random_range(0.0..=100.0);
                         let y: f32 = self.randomizer.random_range(0.0..=100.0);
@@ -183,7 +178,7 @@ impl Screen for Host {
             self.emit_all(&NetworkMessage::UserAmount { amount: self.users.len() as u8 });
         }
 
-        if self.users.len() > 1 {
+        if self.users.len() > 1 && start_game {
             self.emit_all(&NetworkMessage::StartGame);
         }
 

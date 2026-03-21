@@ -76,8 +76,6 @@ impl Game {
     }
 
     pub fn update(&mut self, dt: f32, current_time: f64, mut handler: impl FnMut(GameEvent)) {
-        if self.state != GameState::Active { return; }
-
         self.scheduler.update(|event| {
             match event {
                 InternalEvents::Immunity { on}=> {
