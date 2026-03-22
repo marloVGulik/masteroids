@@ -40,6 +40,7 @@ pub struct Host {
     networkmanager: NetworkManager,
     scheduler: Scheduler<Tasks>,
     randomizer: rand::prelude::ThreadRng,
+    current_user_id: u32,
 }
 
 impl Host {
@@ -49,11 +50,12 @@ impl Host {
             networkmanager: NetworkManager::new("[::]:42069"),
             scheduler: Scheduler::new(),
             randomizer: rand::rng(),
+            current_user_id: 0,
         }
     }
 
 
-    fn emit_all(&mut self, msg: &NetworkMessage) {
+    fn emit_all(&self, msg: &NetworkMessage) {
         for user in &self.users {
             self.networkmanager.emit(&user.addr.to_string(), msg);
         }
@@ -122,12 +124,17 @@ impl Screen for Host {
 
         // Process incoming network messages
         let mut update_player_amount = false;
+        let mut new_player_id = 0;
+        let mut new_player_name = String::new();
         let mut start_game = false;
         self.networkmanager.process_incoming(|addr, msg| {
             match msg {
                 NetworkMessage::Connect { name } => {
-                    let id = self.users.len() as u32 + 1; // Simple ID assignment
-                    self.users.push(Users::new(name.clone(), addr, id));
+                    self.current_user_id = self.current_user_id + 1;
+                    new_player_id = self.current_user_id;
+                    new_player_name = name.clone();
+                    
+                    self.users.push(Users::new(new_player_name.clone(), addr, new_player_id));
                     println!("New user connected: {}", self.users.last().unwrap().name);
                     
                     update_player_amount = true;
@@ -176,6 +183,10 @@ impl Screen for Host {
         // Emit user amount
         if update_player_amount {
             self.emit_all(&NetworkMessage::UserAmount { amount: self.users.len() as u8 });
+            // self.emit_all(&NetworkMessage::ConnectShare { id: new_player_id, name: new_player_name });
+            for u in self.users.iter() {
+                self.emit_all(&NetworkMessage::ConnectShare { id: u.id, name: u.name.to_string() });
+            }
         }
 
         if self.users.len() > 1 && start_game {

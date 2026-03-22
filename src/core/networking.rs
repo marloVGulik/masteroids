@@ -1,4 +1,4 @@
-use std::{net::{ToSocketAddrs, UdpSocket}};
+use std::net::{ToSocketAddrs, UdpSocket};
 
 pub enum NetworkMessage {
     StartGame,
@@ -9,7 +9,8 @@ pub enum NetworkMessage {
     Connect { name: String },
     TargetPlayer { id: u32 },
     UserAmount { amount: u8 },
-    SummonAsteroid { x: f32, y: f32, direction: f32, speed: f32, size: u8 }
+    SummonAsteroid { x: f32, y: f32, direction: f32, speed: f32, size: u8 },
+    ConnectShare { id: u32, name: String }
 }
 
 #[repr(u8)]
@@ -23,6 +24,7 @@ enum MessageId {
     TargetPlayer = 6,
     UserAmount = 7,
     SummonAsteroid = 8,
+    ConnectShare = 9
 }
 
 impl NetworkMessage {
@@ -61,6 +63,12 @@ impl NetworkMessage {
                 bytes.extend_from_slice(&direction.to_be_bytes());
                 bytes.extend_from_slice(&speed.to_be_bytes());
                 bytes.extend_from_slice(&size.to_be_bytes());
+                bytes
+            },
+            NetworkMessage::ConnectShare { id, name } => {
+                let mut bytes = vec![MessageId::ConnectShare as u8];
+                bytes.extend_from_slice(&id.to_be_bytes());
+                bytes.extend_from_slice(name.as_bytes());
                 bytes
             }
         }
@@ -105,6 +113,11 @@ impl NetworkMessage {
                     speed, 
                     size 
                 })
+            },
+            9 if bytes.len() >= 3 => {
+                let id = u32::from_be_bytes(bytes[1..5].try_into().ok()?);
+                let name = String::from_utf8(bytes[5..].to_vec()).ok()?;
+                Some(NetworkMessage::ConnectShare { id, name })
             },
             _ => {
                 println!("Failed message with id {}", id);

@@ -97,6 +97,9 @@ impl Screen for Player {
                     println!("Starting game!");
                     self.game.set_state(GameState::Active);
                 },
+                NetworkMessage::ConnectShare { id, name } => {
+                    println!("New user: {}:{}", id, name);
+                }
                 NetworkMessage::Alive => {
                     self.networkmanager.emit(&self.hostname, &NetworkMessage::Alive);
                 },
