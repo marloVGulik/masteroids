@@ -8,9 +8,13 @@ pub enum NetworkMessage {
     AsteroidHit { size: u8 },
     Connect { name: String },
     TargetPlayer { id: u32 },
+    AttackPlayer { amount: u8 },
     UserAmount { amount: u8 },
     SummonAsteroid { x: f32, y: f32, direction: f32, speed: f32, size: u8 },
-    ConnectShare { id: u32, name: String }
+    UserData { id: u32, score: u32, health: u8, target_player: u32, name: String },
+    Reject { reason: u8 },
+    Accept { id: u32 },
+    PlayerDamaged
 }
 
 #[repr(u8)]
@@ -22,9 +26,13 @@ enum MessageId {
     AsteroidHit = 4,
     Connect = 5,
     TargetPlayer = 6,
-    UserAmount = 7,
-    SummonAsteroid = 8,
-    ConnectShare = 9
+    AttackPlayer = 7,
+    UserAmount = 8,
+    SummonAsteroid = 9,
+    UserData = 10,
+    Reject = 11,
+    Accept = 12,
+    PlayerDamaged = 13
 }
 
 impl NetworkMessage {
@@ -55,6 +63,11 @@ impl NetworkMessage {
                 bytes.extend_from_slice(&id.to_be_bytes());
                 bytes
             },
+            NetworkMessage::AttackPlayer { amount } => {
+                let mut bytes = vec![MessageId::AttackPlayer as u8];
+                bytes.extend_from_slice(&amount.to_be_bytes());
+                bytes
+            },
             NetworkMessage::UserAmount { amount } => vec![MessageId::UserAmount as u8, *amount],
             NetworkMessage::SummonAsteroid { x, y, direction, speed , size} => {
                 let mut bytes = vec![MessageId::SummonAsteroid as u8];
@@ -65,12 +78,26 @@ impl NetworkMessage {
                 bytes.extend_from_slice(&size.to_be_bytes());
                 bytes
             },
-            NetworkMessage::ConnectShare { id, name } => {
-                let mut bytes = vec![MessageId::ConnectShare as u8];
+            NetworkMessage::UserData { id, score, health, target_player: target_id, name } => {
+                let mut bytes = vec![MessageId::UserData as u8];
                 bytes.extend_from_slice(&id.to_be_bytes());
+                bytes.extend_from_slice(&score.to_be_bytes());
+                bytes.extend_from_slice(&health.to_be_bytes());
+                bytes.extend_from_slice(&target_id.to_be_bytes());
                 bytes.extend_from_slice(name.as_bytes());
                 bytes
-            }
+            },
+            NetworkMessage::Reject { reason } => {
+                let mut bytes = vec![MessageId::Reject as u8];
+                bytes.extend_from_slice(&reason.to_be_bytes());
+                bytes
+            },
+            NetworkMessage::Accept { id } => {
+                let mut bytes = vec![MessageId::Accept as u8];
+                bytes.extend_from_slice(&id.to_be_bytes());
+                bytes
+            },
+            NetworkMessage::PlayerDamaged => vec![MessageId::PlayerDamaged as u8]
         }
     }
 
@@ -98,8 +125,9 @@ impl NetworkMessage {
                 let id = u32::from_be_bytes(bytes[1..5].try_into().ok()?);
                 Some(NetworkMessage::TargetPlayer { id })
             },
-            7 if bytes.len() >= 2 => Some(NetworkMessage::UserAmount { amount: bytes[1] }),
-            8 if bytes.len() >= 18 => {
+            7 if bytes.len() >= 2 => Some(NetworkMessage::AttackPlayer { amount: bytes[1] }),
+            8 if bytes.len() >= 2 => Some(NetworkMessage::UserAmount { amount: bytes[1] }),
+            9 if bytes.len() >= 18 => {
                 let x = f32::from_be_bytes(bytes[1..5].try_into().ok()?);
                 let y = f32::from_be_bytes(bytes[5..9].try_into().ok()?);
                 let direction = f32::from_be_bytes(bytes[9..13].try_into().ok()?);
@@ -114,11 +142,23 @@ impl NetworkMessage {
                     size 
                 })
             },
-            9 if bytes.len() >= 3 => {
+            10 if bytes.len() >= 12 => {
                 let id = u32::from_be_bytes(bytes[1..5].try_into().ok()?);
-                let name = String::from_utf8(bytes[5..].to_vec()).ok()?;
-                Some(NetworkMessage::ConnectShare { id, name })
+                let score = u32::from_be_bytes(bytes[5..9].try_into().ok()?);
+                let health = u8::from_be_bytes(bytes[9..10].try_into().ok()?);
+                let target_id = u32::from_be_bytes(bytes[10..14].try_into().ok()?);
+                let name = String::from_utf8(bytes[14..].to_vec()).ok()?;
+                Some(NetworkMessage::UserData { 
+                    id, 
+                    score,
+                    health,
+                    target_player: target_id,
+                    name,
+                })
             },
+            11 if bytes.len() >= 2 => Some(NetworkMessage::Reject { reason: bytes[1] }),
+            12 if bytes.len() >= 5 => Some(NetworkMessage::Accept { id: u32::from_be_bytes(bytes[1..4].try_into().ok()?) }),
+            13 if bytes.len() >= 1 => Some(NetworkMessage::PlayerDamaged),
             _ => {
                 println!("Failed message with id {}", id);
                 None

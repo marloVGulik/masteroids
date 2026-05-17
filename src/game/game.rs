@@ -15,6 +15,7 @@ pub enum GameInput {
     SummonAsteroid { x: f32, y: f32, direction: f32, speed: f32, size: u8 },
 }
 #[derive(PartialEq)]
+#[derive(Clone, Copy)]
 pub enum GameState {
     Waiting,
     Active,
@@ -76,6 +77,10 @@ impl Game {
     }
 
     pub fn update(&mut self, dt: f32, current_time: f64, mut handler: impl FnMut(GameEvent)) {
+        if self.state == GameState::Waiting {
+            return;
+        }
+
         self.scheduler.update(|event| {
             match event {
                 InternalEvents::Immunity { on}=> {
@@ -183,6 +188,9 @@ impl Game {
 
     pub fn set_state(&mut self, state: GameState) {
         self.state = state;
+    }
+    pub fn get_state(&self) -> GameState {
+        self.state
     }
 }
 
