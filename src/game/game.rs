@@ -116,6 +116,7 @@ impl Game {
                 }
             }
         });
+        self.scheduler.remove_fired();
 
         // Update ship
         self.ship.update(dt);

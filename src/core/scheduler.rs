@@ -1,7 +1,7 @@
 //! A generic task scheduler for timed, optionally repeating actions.
 //!
 //! Tasks are identified by name and can be scheduled, unscheduled, or have their wait time
-//! updated at runtime. Non-repeating tasks are automatically removed after they fire.
+//! updated at runtime. Non-repeating tasks are removed via `remove_fired()` after they fire.
 
 use std::time::Duration;
 
@@ -17,8 +17,8 @@ pub struct Task<T> {
 /// A scheduler that runs tasks at specified intervals.
 ///
 /// Each task holds an action of type `T`. The `update` method calls a handler closure
-/// for each task whose wait time has elapsed. Non-repeating tasks are removed after
-/// they fire; repeating tasks continue until explicitly unscheduled.
+/// for each task whose wait time has elapsed. Non-repeating tasks must be cleaned up
+/// via `remove_fired()`; repeating tasks continue until explicitly unscheduled.
 pub struct Scheduler<T> {
     tasks: Vec<Task<T>>,
 }
@@ -69,6 +69,12 @@ impl<T> Scheduler<T> {
                 task.has_ran = true;
             }
         }
+    }
+
+    /// Removes all non-repeating tasks that have already fired.
+    ///
+    /// Call this after `update()` to clean up one-shot tasks whose actions have completed.
+    pub fn remove_fired(&mut self) {
         self.tasks.retain(|task| !(task.has_ran && !task.repeat));
     }
 }
