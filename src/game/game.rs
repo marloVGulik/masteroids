@@ -83,20 +83,26 @@ impl Game {
                 }
             },
             GameInput::SummonAsteroid { x, y, direction, speed , size} => {
-                self.asteroids.push(Asteroid::new(egui::pos2(x, y), speed, direction, size));
+                self.spawn_asteroid(x, y, direction, speed, size);
             }
         }
     }
 
     /// Activates the game (called when the player is ready).
+    ///
+    /// Resets the game to a clean state: ship position, health, bullets cleared.
+    /// Does NOT change the game state — that is the responsibility of the caller
+    /// (host sends StartGame for multiplayer; single-player screen sets state directly).
     pub fn activate(&mut self) {
-        // self.asteroids.push(
-        //     Asteroid::new(egui::pos2(20.0, 70.0), 10.0, 135.0, 5),
-        // );
-        // self.asteroids.push(
-        //     Asteroid::new(egui::pos2(50.0, 50.0), 40.0, 45.0, 5),
-        // );
-        // self.state = GameState::Active;
+        self.ship = Ship::new();
+        self.bullets.clear();
+        self.health = 3;
+        self.immune = false;
+    }
+
+    /// Spawns a single asteroid at the given position, direction, speed, and size.
+    pub fn spawn_asteroid(&mut self, x: f32, y: f32, direction: f32, speed: f32, size: u8) {
+        self.asteroids.push(Asteroid::new(egui::pos2(x, y), speed, direction, size));
     }
 
     /// Advances the game simulation by `dt` seconds.

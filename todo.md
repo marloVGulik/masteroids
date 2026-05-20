@@ -12,37 +12,37 @@
 
 ---
 
-### #2 `Game::activate()` is a no-op — game never starts in single-player mode
+### ~~#2~~ ~~`Game::activate()` is a no-op — game never starts in single-player mode~~ ✅ Done
 
-**File:** `src/game/game.rs:69-77`
+**File:** `src/game/game.rs:92-100`
 
-**Problem:** `activate()` contains only commented-out code. The only way to start the game is for the host to send `StartGame`, or for `Player::on_activate()` to call `game.set_state(GameState::Active)` directly. There is no way to play single-player from the Start screen (empty hostname) reliably.
+**Problem:** `activate()` contained only commented-out code. There was no reliable way to start a single-player game from the Start screen.
 
-**Fix:** Have `activate()` set `state = GameState::Active`, spawn initial asteroids, and emit a `GameEvent` if needed. Remove the commented-out code or move it to a config file.
+**Fix:** Replaced `activate()` with proper initialization (set state to Active, reset ship/bullets/health). Added `Game::spawn_asteroid()` method. Created new `SinglePlayer` screen (src/screens/single_player.rs) with its own pressure ramping scheduler and runtime toggle. Added `ScreenCommand::SinglePlayer` variant. Updated `Start` screen with a "Single Player" button. Updated `Player::on_activate()` to remove the single-player fallback and detect the sentinel hostname to navigate to SinglePlayer screen.
 
 ---
 
-### #3 Host liveness check is backwards — `last_alive` increments every frame regardless
+### ~~#3~~ ~~Host liveness check is backwards — `last_alive` increments every frame regardless~~ ✅ Done
 
 **File:** `src/screens/host.rs:98-104`, `src/screens/host.rs:172-177`
 
-**Problem:** The `CheckAlive` task increments `last_alive` for every user every second. But `last_alive` is only reset when the host *receives* an `Alive` message from that user (line 172). The problem: `NetworkManager::emit` sends to the *resolved target address*, but the host binds to `[::]:42069` and doesn't send its own Alive pings — it only *sends* them to users. Users are supposed to respond with their own `Alive` ping, but `Player::update` only sends `Alive` in response to receiving one (`NetworkMessage::Alive` → emit back). This creates a chicken-and-egg problem: if a user never receives a ping, they never send one, and their counter keeps growing. More importantly, the host itself never resets its own counter since it never receives a ping from itself.
+**Problem:** The `CheckAlive` task incremented `last_alive` and sent Alive pings to users every second. The liveness logic conflated "ping sent" with "ping received".
 
-**Fix:** Track `last_seen` separately — reset it when the host *receives* any message from a user (not just Alive). The `CheckAlive` task should only increment a timeout counter per user, resetting it on any inbound packet.
+**Fix:** Renamed `last_alive` to `last_seen` on `User` struct. Added `last_seen` reset on *any* inbound message from a user (not just `Alive`). Removed the `emit_all` of `Alive` pings from the `CheckAlive` task. Updated user removal to use `last_seen`. Added pressure ramp toggle to Host UI.
+
+---
+
+### ~~#4~~ ~~`NetworkManager::resolver` silently swallows DNS errors~~ ✅ Done
+
+**File:** `src/core/networking.rs:251-265`
+
+**Problem:** `resolver()` returned `None` on DNS failure with zero logging. `emit()` silently dropped messages if resolution failed.
+
+**Fix:** Added `println!` warnings when DNS resolution fails in `resolver()`, when `emit()` fails, and when `new()` falls back to the default address (127.0.0.1:42069).
 
 ---
 
 ## High
-
-### #4 `NetworkManager::resolver` silently swallows DNS errors
-
-**File:** `src/core/networking.rs:213-227`
-
-**Problem:** `to_socket_addrs()` returns a `Result<IntoIter>`. The code uses `if let Ok(...)` but if resolution fails, it returns `None` and the caller (`emit`) silently drops the message. There's no logging, no error return, and no fallback. A typo in the hostname just silently fails to send.
-
-**Fix:** Return `Result<SocketAddr>` instead of `Option`, or at least log a warning on failure. Consider accepting `SocketAddr` directly as an alternative constructor.
-
----
 
 ### #5 `GameEvent::PlayerTarget` is never sent over the network
 
@@ -145,3 +145,35 @@
 **Problem:** The Play button fires `ScreenCommand::Play { hostname, username }` regardless of whether `hostname` is empty. The `Player` screen handles this by falling back to single-player mode, but there's no visual feedback to the user that their input was invalid or that the game is running locally.
 
 **Fix:** Either disable the Play button when hostname is empty (with a tooltip like "Playing single-player"), or show a confirmation dialog. Add a `is_single_player` flag to `ScreenCommand::Play`.
+
+---
+
+## New TODOs
+
+### #15 `GameEvent::PlayerTarget` needs network wiring for asteroid transfer
+
+**File:** `src/game/game.rs:240`, `src/screens/player.rs:189-191`
+
+**Problem:** Players will send asteroids to each other (see design doc). This requires a `NetworkMessage::AsteroidSent` / `AsteroidReceived` pair and corresponding `GameEvent` variants.
+
+**Fix:** Add `GameEvent::AsteroidSent { id, size }` and `GameEvent::AsteroidReceived { asteroid }` variants. Wire them in the Player screen to send/receive `NetworkMessage::AsteroidSent`.
+
+---
+
+### #16 `UserData` target_player ambiguity with sentinel value 0
+
+**File:** `src/core/networking.rs:37`, `src/screens/host.rs:242`
+
+**Problem:** `target_player: u32` in `UserData` uses `unwrap_or(0)` to convert `None` to 0. Player ID 0 is reserved (IDs start at 1), but if a player targets ID 0 it becomes ambiguous with "no target".
+
+**Fix:** Use `u32::MAX` as a sentinel for "no target" and document it in the protocol.
+
+---
+
+### #17 `NetworkMessage::Ready` uses `u8` instead of `bool`
+
+**File:** `src/core/networking.rs:19`, `src/core/networking.rs:139`
+
+**Problem:** `is_ready: u8` accepts any byte value (255, 42, etc.) not just 0 and 1.
+
+**Fix:** Define a `ReadyState { Ready, NotReady }` enum and use it in the message type.

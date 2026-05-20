@@ -7,7 +7,7 @@ use crate::core::scheduler::Scheduler;
 
 use rand::{self, RngExt};
 
-/// Number of consecutive missed alive checks before a user is considered disconnected.
+/// Number of consecutive missed packets before a user is considered disconnected.
 const USER_TIMEOUT: u8 = 10;
 
 /// A connected multiplayer user.
@@ -23,8 +23,8 @@ pub struct User {
     pub score: u32,
     /// Current health.
     pub health: u8,
-    /// Consecutive missed alive checks.
-    pub last_alive: u8,
+    /// Last time a packet was received from this user (incremented by scheduler).
+    pub last_seen: u8,
     /// ID of the player this user is targeting.
     pub target_player_id: Option<u32>,
     /// Whether this user has pressed ready.
@@ -42,7 +42,7 @@ impl User {
             id,
             score: 0,
             health: 3,
-            last_alive: 0,
+            last_seen: 0,
             target_player_id: None,
             is_ready: false,
             is_updated: false,
@@ -52,7 +52,7 @@ impl User {
 
 /// Scheduled tasks managed by the host's scheduler.
 enum Tasks {
-    /// Periodically checks if connected users are still alive.
+    /// Periodically increments the last_seen counter for all users.
     CheckAlive,
     /// Spawns new asteroids for all connected players.
     SummonAsteroids,
@@ -70,6 +70,7 @@ pub struct Host {
     randomizer: rand::prelude::ThreadRng,
     current_user_id: u32,
     started: bool,
+    pressure_enabled: bool,
 }
 
 impl Host {
@@ -82,6 +83,7 @@ impl Host {
             randomizer: rand::rng(),
             current_user_id: 0,
             started: false,
+            pressure_enabled: true,
         }
     }
 
@@ -92,7 +94,7 @@ impl Host {
     /// Emits a message to all connected users.
     fn emit_all(&self, msg: &NetworkMessage) {
         for user in &self.users {
-            self.networkmanager.emit(&user.addr.to_string(), msg);
+            self.networkmanager.emit_socket(&user.addr, msg);
         }
     }
 }
@@ -105,6 +107,9 @@ impl Screen for Host {
             ui.heading("Host Game");
             if ui.button("Back").clicked() {
                 cmd = Some(ScreenCommand::Start);
+            }
+            if ui.button(if self.pressure_enabled { "Disable Pressure" } else { "Enable Pressure" }).clicked() {
+                self.pressure_enabled = !self.pressure_enabled;
             }
 
             ui.horizontal_centered(|user_ui| {
@@ -130,12 +135,11 @@ impl Screen for Host {
             match tasks {
                 Tasks::CheckAlive => {
                     for user in &mut self.users {
-                        user.last_alive += 1;
-                        self.networkmanager.emit(&user.addr.to_string(), &NetworkMessage::Alive);
+                        user.last_seen += 1;
                     }
                 },
                 Tasks::SummonAsteroids => {
-                    if self.started == false {
+                    if self.started == false || !self.pressure_enabled {
                         return;
                     }
 
@@ -144,7 +148,7 @@ impl Screen for Host {
                         let y: f32 = self.randomizer.random_range(0.0..=100.0);
                         let direction: f32 = self.randomizer.random_range(0.0..=360.0);
                         let speed: f32 = self.randomizer.random_range(0.0..10.0);
-                        let size: u8 = self.randomizer.random_range(0..=3);
+                        let size: u8 = self.randomizer.random_range(1..=3);
 
                         self.networkmanager.emit_socket(
                             &user.addr, 
@@ -163,10 +167,13 @@ impl Screen for Host {
 
         // Process incoming network messages
         let mut update_player_amount = false;
-        let mut new_player_id = 0;
-        let mut new_player_name = String::new();
         let mut start_game = false;
         self.networkmanager.process_incoming(|addr, msg| {
+            // Reset last_seen on any inbound message from a known user
+            if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
+                user.last_seen = 0;
+            }
+
             match msg {
                 NetworkMessage::Connect { name } => {
                     if self.started {
@@ -175,11 +182,13 @@ impl Screen for Host {
                     }
 
                     self.current_user_id = self.current_user_id + 1;
-                    new_player_id = self.current_user_id;
-                    new_player_name = name.clone();
+                    let player_id = self.current_user_id;
                     
-                    self.users.push(User::new(new_player_name.clone(), addr, new_player_id));
-                    println!("New user connected: {}", self.users.last().unwrap().name);
+                    self.users.push(User::new(name.clone(), addr, player_id));
+                    println!("New user connected: {}", name);
+                    
+                    // Send Accept message directly to the new player with their ID
+                    self.networkmanager.emit_socket(&addr, &NetworkMessage::Accept { id: player_id });
                     
                     update_player_amount = true;
                 },
@@ -195,11 +204,9 @@ impl Screen for Host {
                     }
                 }
                 NetworkMessage::Alive => {
-                    if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
-                        user.last_alive = 0;
-                    }
+                    // Heartbeat already handled above by resetting last_seen
                 },
-                NetworkMessage::AsteroidHit { size: _ } => {
+               NetworkMessage::AsteroidHit { size: _ } => {
                     if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
                         user.score += 1;
                         user.is_updated = true;
@@ -207,8 +214,8 @@ impl Screen for Host {
                 },
                 NetworkMessage::TargetPlayer { id } => {
                     if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
-                        user.target_player_id = Some(id.clone());
-                        println!("{} is targeting player: {}", user.id, id);
+                        user.target_player_id = Some(*id);
+                        println!("Player {} is targeting player: {}", user.id, id);
                     }
                 },
                 NetworkMessage::AttackPlayer { amount } => {
@@ -224,9 +231,9 @@ impl Screen for Host {
             }
         });
 
-        // Remove dead users
+        // Remove dead users (and their asteroids are simply discarded — no redistribution)
         let old_size = self.users.len();
-        self.users.retain(|user| user.last_alive < USER_TIMEOUT);
+        self.users.retain(|user| user.last_seen < USER_TIMEOUT);
         if old_size != self.users.len() {
             update_player_amount = true;
         }

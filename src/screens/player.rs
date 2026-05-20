@@ -109,16 +109,19 @@ impl Screen for Player {
     fn on_activate(&mut self, _ctx: &egui::Context) {
         self.game.activate();
 
-        if !self.hostname.is_empty() {
+        if !self.hostname.is_empty() && self.hostname != "__single_player__" {
             println!("Connecting to {}", self.hostname);
             self.networkmanager.emit(&self.hostname, &NetworkMessage::Connect { name: self.username.clone() });
-        } else {
-            self.game.set_state(GameState::Active);
         }
     } 
 
     fn update(&mut self, ctx: &egui::Context, _frame: &eframe::Frame) -> Option<ScreenCommand> {
         let mut cmd = None;
+
+        // Detect single-player sentinel and navigate to SinglePlayer screen
+        if self.hostname == "__single_player__" {
+            return Some(ScreenCommand::SinglePlayer { username: self.username.clone() });
+        }
 
         self.networkmanager.process_incoming(|_addr, msg| {
             match msg {

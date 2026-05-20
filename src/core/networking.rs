@@ -209,6 +209,7 @@ impl NetworkManager {
         if let Some(ok_res_addr) = res_addr {
             final_addr = ok_res_addr;
         } else {
+            println!("warn: falling back to default address 127.0.0.1:42069");
             final_addr = std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)), 42069);
         }
 
@@ -227,6 +228,8 @@ impl NetworkManager {
 
         if let Some(resolved_target) = resolved_target_opt {
             self.emit_socket(&resolved_target, msg);
+        } else {
+            println!("warn: failed to resolve target '{}' when sending message", target);
         }
     }
 
@@ -261,6 +264,7 @@ impl NetworkManager {
             return collected_ips.get(0).copied();
         }
 
-        return None;
+        println!("warn: DNS resolution failed for '{}'", addr);
+        None
     }
 }

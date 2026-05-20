@@ -7,6 +7,7 @@ pub use screen::Screen;
 
 pub use screens::start;
 pub use screens::settings;
+pub use screens::single_player;
 
 pub mod game;
 pub mod core;

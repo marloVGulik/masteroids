@@ -3,6 +3,9 @@
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
 
+/// Empty hostname used as a sentinel for single-player mode.
+pub const SINGLE_PLAYER_HOSTNAME: &str = "__single_player__";
+
 /// The start screen displayed when the app launches.
 ///
 /// Collects the player's `hostname` (for networking) and `username`, then provides
@@ -35,6 +38,9 @@ impl Screen for Start {
             }
             if ui.button("Host").clicked() {
                 cmd = Some(ScreenCommand::Host);
+            }
+            if ui.button("Single Player").clicked() {
+                cmd = Some(ScreenCommand::SinglePlayer { username: self.username.clone() });
             }
             if ui.button("Settings").clicked() {
                 cmd = Some(ScreenCommand::Settings);

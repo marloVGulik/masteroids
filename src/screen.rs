@@ -19,6 +19,11 @@ pub enum ScreenCommand {
     },
     /// Navigate to the host screen to create a new game.
     Host,
+    /// Navigate to the single-player screen.
+    SinglePlayer {
+        /// Display name of the player.
+        username: String,
+    },
     /// Navigate to the settings screen.
     Settings,
     /// Close the application.
