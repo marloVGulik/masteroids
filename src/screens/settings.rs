@@ -1,11 +1,15 @@
+//! The settings screen (placeholder).
+
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
 
-
-
-pub struct Settings;
+/// Placeholder settings screen.
+///
+/// Currently only provides a Back button to return to the start screen.
+pub struct Settings {}
 
 impl Settings {
+    /// Creates a new empty settings screen.
     pub fn new() -> Self {
         Self {}
     }

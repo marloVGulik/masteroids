@@ -1,26 +1,44 @@
+//! The game loop, state machine, and entity management.
+//!
+//! `Game` manages asteroids, bullets, and the ship. It processes input via `interact()`,
+//! updates physics each frame via `update()`, and draws all entities via `draw()`.
+
 use std::time::Duration;
 
 use crate::game::objects::{asteroid::Asteroid, bullet::Bullet, ship::Ship};
-use crate::core::scheduler::{Scheduler};
+use crate::core::scheduler::Scheduler;
 
-
+/// Input that can be fed into the game.
+///
+/// Comes from two sources: direct player input (keys) and networking (remote players).
 pub enum GameInput {
-    // Direct player input
+    /// Rotate left by `dt` seconds.
     Left { dt: f32 },
+    /// Rotate right by `dt` seconds.
     Right { dt: f32 },
+    /// Thrust forward by `dt` seconds.
     Forward { dt: f32 },
+    /// Fire a bullet at the current time.
     Shoot { current_time: f64 },
-
-    // Networking input
+    /// Spawn an asteroid at a specific position (from the host).
     SummonAsteroid { x: f32, y: f32, direction: f32, speed: f32, size: u8 },
 }
-#[derive(PartialEq)]
-#[derive(Clone, Copy)]
+
+/// Current state of the game loop.
+#[derive(PartialEq, Clone, Copy)]
 pub enum GameState {
+    /// Waiting for players to ready up.
     Waiting,
+    /// Game is active and entities are updating.
     Active,
+    /// Game has ended (e.g. player health reached zero).
     GameOver,
 }
+
+/// Top-level game state.
+///
+/// Contains the ship, asteroids, bullets, health, and a scheduler for timed events
+/// like the invulnerability window after taking damage.
 pub struct Game {
     state: GameState,
     scheduler: Scheduler<InternalEvents>,
@@ -28,15 +46,18 @@ pub struct Game {
     asteroids: Vec<Asteroid>,
     ship: Ship,
     bullets: Vec<Bullet>,
-
     health: u8,
-    immune: bool
+    immune: bool,
 }
+
+/// Internal scheduler tasks used by `Game`.
 enum InternalEvents {
-    Immunity { on: bool }
+    /// Toggles ship immunity after taking damage.
+    Immunity { on: bool },
 }
 
 impl Game {
+    /// Creates a new game with a single ship, no asteroids, and full health.
     pub fn new() -> Self {
         Self {
             state: GameState::Waiting,
@@ -46,10 +67,11 @@ impl Game {
             ship: Ship::new(),
             bullets: vec!(),
             health: 3,
-            immune: false
+            immune: false,
         }
     }
 
+    /// Processes a single game input (movement, shooting, or remote asteroid spawn).
     pub fn interact(&mut self, input: GameInput) {
         match input {
             GameInput::Left { dt } => self.ship.turn_left(dt),
@@ -60,12 +82,13 @@ impl Game {
                     self.bullets.push(bullet);
                 }
             },
-
             GameInput::SummonAsteroid { x, y, direction, speed , size} => {
                 self.asteroids.push(Asteroid::new(egui::pos2(x, y), speed, direction, size));
             }
         }
     }
+
+    /// Activates the game (called when the player is ready).
     pub fn activate(&mut self) {
         // self.asteroids.push(
         //     Asteroid::new(egui::pos2(20.0, 70.0), 10.0, 135.0, 5),
@@ -76,6 +99,11 @@ impl Game {
         // self.state = GameState::Active;
     }
 
+    /// Advances the game simulation by `dt` seconds.
+    ///
+    /// Updates the ship, bullets, and asteroids. Checks all collisions (bullet-asteroid,
+    /// asteroid-ship, asteroid-asteroid) and emits `GameEvent` callbacks for the screen
+    /// to handle (e.g. sending damage info over the network).
     pub fn update(&mut self, dt: f32, current_time: f64, mut handler: impl FnMut(GameEvent)) {
         if self.state == GameState::Waiting {
             return;
@@ -169,6 +197,7 @@ impl Game {
         });
     }
 
+    /// Draws all game entities (asteroids, bullets, ship) into the given egui UI.
     pub fn draw(&mut self, ui: &mut egui::Ui, size: f32, play_area: egui::Rect) {
         for asteroid in self.asteroids.iter() {
             asteroid.draw(ui, size, play_area);
@@ -179,23 +208,33 @@ impl Game {
         self.ship.draw(ui, size, play_area);
     }
 
+    /// Returns the number of rocks the player has collected.
     pub fn get_collected_rocks(&self) -> u32 {
         self.collected_rocks
     }
+
+    /// Returns the player's current health.
     pub fn get_health(&self) -> u8 {
         self.health
     }
 
+    /// Sets the game state.
     pub fn set_state(&mut self, state: GameState) {
         self.state = state;
     }
+
+    /// Returns the current game state.
     pub fn get_state(&self) -> GameState {
         self.state
     }
 }
 
+/// Events emitted by `Game::update()` to notify the screen layer.
 pub enum GameEvent {
+    /// The player took damage; `health` is the remaining health after the hit.
     Damage { health: u8 },
+    /// An asteroid was destroyed by a bullet; `size` is the pre-split size.
     AsteroidDestroyed { size: u8 },
+    /// Another player is targeting this player.
     PlayerTarget { id: u32 },
 }

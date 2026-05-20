@@ -1,13 +1,24 @@
+//! The application entry point.
+//!
+//! `App` is the top-level eframe application. It holds the current screen (via the
+//! `Screen` trait) and dispatches the egui frame loop. Navigation between screens is
+//! driven by `ScreenCommand` returned from each screen's `update()` or `ui()` methods.
+
 use egui;
 use eframe;
-use eframe::{App as EframeApp};
+use eframe::App as EframeApp;
 
 use crate::{Screen, screen, screens};
 
-
+/// The Masteroids eframe application.
+///
+/// Contains the current screen (start, host, player, settings) and a label string
+/// used as the default heading when no screen provides its own UI.
 pub struct App {
+    /// Label displayed in the central panel when the current screen doesn't fill it.
     label: String,
-    current_screen: Box<dyn Screen>
+    /// The currently active screen, dynamically dispatched via trait object.
+    current_screen: Box<dyn Screen>,
 }
 
 impl Default for App {
@@ -20,6 +31,7 @@ impl Default for App {
 }
 
 impl App {
+    /// Constructs the application from the eframe creation context.
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self::default()
     }
@@ -28,7 +40,6 @@ impl App {
 impl EframeApp for App {    
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Update physics and handle input
-
         let mut next_screen: Option<screen::ScreenCommand>;
 
         next_screen = self.current_screen.update(&ctx, &frame);
@@ -41,7 +52,6 @@ impl EframeApp for App {
                 next_screen = self.current_screen.ui(ctx, ui, egui::Order::Foreground);
             });
         }
-        
 
         if let Some(cmd) = next_screen {
             match cmd {
@@ -60,13 +70,9 @@ impl EframeApp for App {
                 screen::ScreenCommand::ExitProgram => {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
-                // _ => {
-                //     // NOT IMPLEMENTED
-                // }
             }
 
             self.current_screen.on_activate(ctx);
         }
     }
-
 }

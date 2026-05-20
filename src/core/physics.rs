@@ -1,9 +1,15 @@
+//! Physics helpers for collision detection and response.
+//!
+//! All functions work in the normalized 0–100 coordinate space used by the game.
+
+/// Returns true if `point` falls within a circle defined by `circle_center` and `radius`.
 pub fn point_in_circle(point: egui::Pos2, circle_center: egui::Pos2, radius: f32) -> bool {
     let dx = point.x - circle_center.x;
     let dy = point.y - circle_center.y;
     (dx * dx + dy * dy) <= radius * radius
 }
 
+/// Returns true if two circles overlap based on their centers and radii.
 pub fn circle_collision(center1: egui::Pos2, radius1: f32, center2: egui::Pos2, radius2: f32) -> bool {
     let dx = center1.x - center2.x;
     let dy = center1.y - center2.y;
@@ -12,6 +18,7 @@ pub fn circle_collision(center1: egui::Pos2, radius1: f32, center2: egui::Pos2, 
     distance_squared <= radius_sum * radius_sum
 }
 
+/// Returns push-apart forces for two overlapping circles, or zero forces if no collision.
 pub fn force_circles_away(center1: egui::Pos2, radius1: f32, center2: egui::Pos2, radius2: f32) -> (egui::Vec2, egui::Vec2) {
     let dx = center1.x - center2.x;
     let dy = center1.y - center2.y;

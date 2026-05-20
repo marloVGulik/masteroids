@@ -1,15 +1,28 @@
+//! The in-game player screen: renders the game view and handles input.
+
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
 use crate::core::networking::{NetworkManager, NetworkMessage};
 use crate::game::game::{Game, GameInput, GameState, GameEvent};
 
+/// Represents a remote player known to the client.
 pub struct OtherPlayer {
-    name: String,
-    health: u8,
-    score: u32,
-    id: u32,
-    targets_you: bool
+    /// Display name.
+    pub name: String,
+    /// Current health.
+    pub health: u8,
+    /// Current score.
+    pub score: u32,
+    /// Unique ID assigned by the host.
+    pub id: u32,
+    /// Whether this player is targeting the local player.
+    pub targets_you: bool,
 }
+
+/// The in-game screen for a single player.
+///
+/// Manages the local `Game` instance, connects to the host via `NetworkManager`,
+/// processes incoming network messages, and reads keyboard input each frame.
 pub struct Player {
     game: Game,
     other_players: Vec<OtherPlayer>,
@@ -18,12 +31,15 @@ pub struct Player {
     username: String,
     user_amount: u8,
     my_id: u32,
-    is_ready: bool
+    is_ready: bool,
 }
 
 impl Player {
+    /// Creates a new player screen.
+    ///
+    /// `hostname` is the address of the host (e.g. "192.168.1.10:42069").
+    /// If `hostname` is empty the game runs in single-player mode.
     pub fn new(hostname: String, username: String) -> Self {
-        // let newhn = hostname.clone() + ":42069";
         let new_hostname = hostname.clone();
         Self {
             game: Game::new(),
@@ -33,7 +49,7 @@ impl Player {
             username,
             user_amount: 0,
             my_id: 0,
-            is_ready: false
+            is_ready: false,
         }
     }
 }
@@ -60,11 +76,6 @@ impl Screen for Player {
                     self.networkmanager.emit(&self.hostname, &msg);
                 }
             }
-
-            // let painter = ui.painter();
-            // let pos = egui::pos2(100.0, 100.0);
-            // painter.circle_filled(pos, 5.0, egui::Color32::RED); // Draw an asteroid
-
 
             ui.label(format!("Connected players: {}", self.user_amount));
 
@@ -98,7 +109,6 @@ impl Screen for Player {
     fn on_activate(&mut self, _ctx: &egui::Context) {
         self.game.activate();
 
-        // If hostname is filled in:
         if !self.hostname.is_empty() {
             println!("Connecting to {}", self.hostname);
             self.networkmanager.emit(&self.hostname, &NetworkMessage::Connect { name: self.username.clone() });
@@ -125,7 +135,6 @@ impl Screen for Player {
                     self.game.set_state(GameState::Active);
                 },
                 NetworkMessage::UserData { id, score, health, target_player: target_id, name } => {
-                    println!("User data: {}:{}", id, name);
                     if let Some(user) = self.other_players.iter_mut().find(|p| p.id == *id) {
                         user.score = *score;
                         user.health = *health;
@@ -150,7 +159,6 @@ impl Screen for Player {
         });
 
         ctx.input(|i| {
-            // Movement
             if i.key_down(egui::Key::W) {
                 self.game.interact(GameInput::Forward { dt: i.stable_dt });
             }
@@ -161,7 +169,6 @@ impl Screen for Player {
                 self.game.interact(GameInput::Right { dt: i.stable_dt });
             }
 
-            // Shooting
             if i.key_down(egui::Key::Space) {
                 self.game.interact(GameInput::Shoot { current_time: i.time });
             }
@@ -177,7 +184,6 @@ impl Screen for Player {
                     },
                     GameEvent::AsteroidDestroyed { size } => {
                         println!("Asteroid destroyed with size: {}", size);
-
                         self.networkmanager.emit(&self.hostname, &NetworkMessage::AsteroidHit { size });
                     },
                     GameEvent::PlayerTarget { id } => {

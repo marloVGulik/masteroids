@@ -1,25 +1,40 @@
+//! The host screen: manages multiplayer game sessions.
+
 use crate::core::networking::{NetworkMessage, NetworkManager};
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
-use crate::core::scheduler::{Scheduler};
+use crate::core::scheduler::Scheduler;
 
 use rand::{self, RngExt};
 
-const USER_TIMEOUT: u8 = 10; // Number of alive checks before a user is considered disconnected
+/// Number of consecutive missed alive checks before a user is considered disconnected.
+const USER_TIMEOUT: u8 = 10;
 
+/// A connected multiplayer user.
 #[derive(Clone)]
 pub struct User {
-    name: String,
-    addr: std::net::SocketAddr,
-    id: u32,
-    score: u32,
-    health: u8,
-    last_alive: u8,
-    target_player_id: Option<u32>,
-    is_ready: bool,
-    is_updated: bool
+    /// Display name.
+    pub name: String,
+    /// Network address.
+    pub addr: std::net::SocketAddr,
+    /// Unique ID assigned by the host.
+    pub id: u32,
+    /// Current score.
+    pub score: u32,
+    /// Current health.
+    pub health: u8,
+    /// Consecutive missed alive checks.
+    pub last_alive: u8,
+    /// ID of the player this user is targeting.
+    pub target_player_id: Option<u32>,
+    /// Whether this user has pressed ready.
+    pub is_ready: bool,
+    /// Whether this user's data has been emitted this frame.
+    pub is_updated: bool,
 }
+
 impl User {
+    /// Creates a new user with zero score and health.
     pub fn new(name: String, addr: std::net::SocketAddr, id: u32) -> Self {
         Self {
             name,
@@ -30,25 +45,35 @@ impl User {
             last_alive: 0,
             target_player_id: None,
             is_ready: false,
-            is_updated: false
+            is_updated: false,
         }
     }
 }
+
+/// Scheduled tasks managed by the host's scheduler.
 enum Tasks {
+    /// Periodically checks if connected users are still alive.
     CheckAlive,
+    /// Spawns new asteroids for all connected players.
     SummonAsteroids,
 }
 
+/// The host game screen.
+///
+/// Manages connected users, processes incoming network messages, runs scheduled tasks
+/// (alive checks, asteroid spawning), and broadcasts game state to all clients.
+/// When all users are ready and there are 2+ players, the game starts automatically.
 pub struct Host {
     users: Vec<User>,
     networkmanager: NetworkManager,
     scheduler: Scheduler<Tasks>,
     randomizer: rand::prelude::ThreadRng,
     current_user_id: u32,
-    started: bool
+    started: bool,
 }
 
 impl Host {
+    /// Creates a new host listening on `[::]:42069`.
     pub fn new() -> Self {
         Self {
             users: Vec::new(),
@@ -56,7 +81,7 @@ impl Host {
             scheduler: Scheduler::new(),
             randomizer: rand::rng(),
             current_user_id: 0,
-            started: false
+            started: false,
         }
     }
 
@@ -64,6 +89,7 @@ impl Host {
         self.users.iter().find(|u| u.id == id)
     }
 
+    /// Emits a message to all connected users.
     fn emit_all(&self, msg: &NetworkMessage) {
         for user in &self.users {
             self.networkmanager.emit(&user.addr.to_string(), msg);
@@ -93,6 +119,11 @@ impl Screen for Host {
 
         cmd
     }
+
+    /// Processes scheduler tasks and incoming network messages.
+    ///
+    /// This is the main game-loop host logic: it handles user connections, ready states,
+    /// liveness checks, score updates, asteroid spawning, and game start conditions.
     fn update(&mut self, _ctx: &egui::Context, _event: &eframe::Frame) -> Option<ScreenCommand> {
         // Check scheduled tasks
         self.scheduler.update(|tasks| {
@@ -104,15 +135,10 @@ impl Screen for Host {
                     }
                 },
                 Tasks::SummonAsteroids => {
-                    // Old starting logic
-                    // if self.users.iter().filter(|user| !user.is_ready).count() > 0 {
-                    //     return;
-                    // }
                     if self.started == false {
                         return;
                     }
 
-                    // println!("Time for new asteroids for {} users", self.users.len());
                     for user in self.users.iter() {
                         let x: f32 = self.randomizer.random_range(0.0..=100.0);
                         let y: f32 = self.randomizer.random_range(0.0..=100.0);
@@ -143,7 +169,6 @@ impl Screen for Host {
         self.networkmanager.process_incoming(|addr, msg| {
             match msg {
                 NetworkMessage::Connect { name } => {
-                    // Reject if game has already started
                     if self.started {
                         self.networkmanager.emit_socket(&addr, &NetworkMessage::Reject { reason: 1 });
                         return;
@@ -171,16 +196,13 @@ impl Screen for Host {
                 }
                 NetworkMessage::Alive => {
                     if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
-                        user.last_alive = 0; // Reset alive counter
-                        // println!("Received alive from {}", user.name);
+                        user.last_alive = 0;
                     }
                 },
                 NetworkMessage::AsteroidHit { size: _ } => {
                     if let Some(user) = self.users.iter_mut().find(|u| u.addr == addr) {
-                        user.score += 1; // Increase score based on asteroid size
+                        user.score += 1;
                         user.is_updated = true;
-
-                        //ToDo: Check if it is possible for the user to have hit an asteroid of that size (anti-cheat)
                     }
                 },
                 NetworkMessage::TargetPlayer { id } => {
@@ -212,7 +234,6 @@ impl Screen for Host {
         // Emit user amount
         if update_player_amount {
             self.emit_all(&NetworkMessage::UserAmount { amount: self.users.len() as u8 });
-            // self.emit_all(&NetworkMessage::ConnectShare { id: new_player_id, name: new_player_name });
             for u in self.users.iter() {
                 self.emit_all(&NetworkMessage::UserData { 
                     id: u.id, 
@@ -266,5 +287,4 @@ impl Screen for Host {
             Tasks::SummonAsteroids
         );
     }
-
 }

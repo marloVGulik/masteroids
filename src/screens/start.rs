@@ -1,14 +1,19 @@
+//! The start screen: main menu with hostname, username, and navigation buttons.
+
 use crate::screen::ScreenCommand;
 use crate::screen::Screen;
 
-
-
+/// The start screen displayed when the app launches.
+///
+/// Collects the player's `hostname` (for networking) and `username`, then provides
+/// buttons to navigate to Play, Host, Settings, or Exit.
 pub struct Start {
     hostname: String,
     username: String,
 }
 
 impl Start {
+    /// Creates a new start screen with empty hostname and username.
     pub fn new() -> Self {
         Self {
             hostname: "".to_string(),
